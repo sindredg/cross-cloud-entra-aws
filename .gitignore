@@ -1,0 +1,73 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!terraform.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# AWS and Bicep local configuration
+.aws/
+.aws-sam/
+cdk.out/
+samconfig.toml
+*.bicepparam
+!*.example.bicepparam
+*.local.json
+
+# Credentials, certificates, and tokens
+*-credentials.json
+service-account*.json
+credentials
+*.credentials
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+*.keystore
+*.token
+*.jwt
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node.js and application output
+node_modules/
+dist/
+build/
+coverage/
+*.log
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local scratch files
+.tmp/
+tmp/
+scratch/
