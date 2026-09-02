@@ -1,30 +1,23 @@
-extension microsoftGraphV1
-
-@description('Display name of the AWS administrator group.')
-param groupDisplayName string = 'AWS-Administrators'
-
-@description('Immutable identifier used by Microsoft Graph Bicep.')
-param groupUniqueName string = 'crossCloudAwsAdministrators'
-
-@description('Department required for membership.')
-param requiredDepartment string = 'Cloud Platform'
-
-@description('Job title required for membership.')
-param requiredJobTitle string = 'Cloud Administrator'
-
-resource awsAdministrators 'Microsoft.Graph/groups@v1.0' = {
-  displayName: groupDisplayName
-  description: 'Identities eligible for AWS administrator access.'
-  uniqueName: groupUniqueName
-  mailEnabled: false
-  mailNickname: 'aws-administrators'
-  securityEnabled: true
-  groupTypes: [
-    'DynamicMembership'
-  ]
-  membershipRule: '(user.accountEnabled -eq true) and (user.userType -eq "Member") and (user.department -eq "${requiredDepartment}") and (user.jobTitle -eq "${requiredJobTitle}")'
-  membershipRuleProcessingState: 'On'
+type dynamicGroupConfiguration = {
+  displayName: string
+  description: string
+  uniqueName: string
+  mailNickname: string
+  membershipRule: string
 }
 
-output groupDisplayName string = awsAdministrators.displayName
-output groupId string = awsAdministrators.id
+@description('Dynamic security groups managed by this deployment.')
+param groups dynamicGroupConfiguration[]
+
+module dynamicGroups './modules/dynamic-group.bicep' = [for group in groups: {
+  name: 'dynamic-group-${uniqueString(group.uniqueName)}'
+  params: {
+    displayName: group.displayName
+    groupDescription: group.description
+    uniqueName: group.uniqueName
+    mailNickname: group.mailNickname
+    membershipRule: group.membershipRule
+  }
+}]
+
+output groupDisplayNames array = [for (group, index) in groups: dynamicGroups[index].outputs.displayName]
