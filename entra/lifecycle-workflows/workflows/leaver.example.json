@@ -1,0 +1,53 @@
+{
+  "category": "leaver",
+  "displayName": "Offboard cross-cloud leaver",
+  "description": "Remove entitlements, revoke sessions, and disable the account so SCIM deprovisions AWS access.",
+  "isEnabled": true,
+  "isSchedulingEnabled": false,
+  "executionConditions": {
+    "@odata.type": "#microsoft.graph.identityGovernance.triggerAndScopeBasedConditions",
+    "scope": {
+      "@odata.type": "#microsoft.graph.identityGovernance.ruleBasedSubjectSet",
+      "rule": "(companyName eq 'CrossCloud Identity Project')"
+    },
+    "trigger": {
+      "@odata.type": "#microsoft.graph.identityGovernance.timeBasedAttributeTrigger",
+      "timeBasedAttribute": "employeeLeaveDateTime",
+      "offsetInDays": 0
+    }
+  },
+  "tasks": [
+    {
+      "displayName": "Cancel pending access package assignment requests",
+      "description": "Stop any assignment request that has not been delivered yet.",
+      "isEnabled": true,
+      "continueOnError": true,
+      "taskDefinitionId": "498770d9-bab7-4e4c-b73d-5ded82a1d0b3",
+      "arguments": []
+    },
+    {
+      "displayName": "Remove all access package assignments",
+      "description": "Remove every entitlement management assignment held by the leaver.",
+      "isEnabled": true,
+      "continueOnError": true,
+      "taskDefinitionId": "42ae2956-193d-4f39-be06-691b8ac4fa1d",
+      "arguments": []
+    },
+    {
+      "displayName": "Revoke all refresh tokens for user",
+      "description": "Invalidate refresh and browser session tokens so no new access token is issued.",
+      "isEnabled": true,
+      "continueOnError": false,
+      "taskDefinitionId": "509589a4-0466-4471-829e-49c5e502bdee",
+      "arguments": []
+    },
+    {
+      "displayName": "Disable user account",
+      "description": "Disable the account so SCIM deactivates the matching IAM Identity Center user.",
+      "isEnabled": true,
+      "continueOnError": false,
+      "taskDefinitionId": "1dfdfcc7-52fa-4c2e-bf3a-e3919cc12950",
+      "arguments": []
+    }
+  ]
+}

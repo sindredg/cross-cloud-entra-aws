@@ -15,6 +15,9 @@ override.tf.json
 .terraformrc
 terraform.rc
 
+# Lifecycle Workflow exports before templating; they carry tenant object IDs
+entra/lifecycle-workflows/local/
+
 # AWS and Bicep local configuration
 .aws/
 .aws-sam/

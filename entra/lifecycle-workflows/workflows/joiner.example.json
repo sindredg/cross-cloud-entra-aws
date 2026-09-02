@@ -1,0 +1,46 @@
+{
+  "category": "joiner",
+  "displayName": "Onboard cross-cloud joiner",
+  "description": "Enable the synthetic joiner and deliver baseline access before first sign-in.",
+  "isEnabled": true,
+  "isSchedulingEnabled": false,
+  "executionConditions": {
+    "@odata.type": "#microsoft.graph.identityGovernance.triggerAndScopeBasedConditions",
+    "scope": {
+      "@odata.type": "#microsoft.graph.identityGovernance.ruleBasedSubjectSet",
+      "rule": "(companyName eq 'CrossCloud Identity Project')"
+    },
+    "trigger": {
+      "@odata.type": "#microsoft.graph.identityGovernance.timeBasedAttributeTrigger",
+      "timeBasedAttribute": "employeeHireDate",
+      "offsetInDays": 0
+    }
+  },
+  "tasks": [
+    {
+      "displayName": "Enable user account",
+      "description": "Enable the joiner account in the directory.",
+      "isEnabled": true,
+      "continueOnError": false,
+      "taskDefinitionId": "6fc52c9d-398b-4305-9763-15f42c1676fc",
+      "arguments": []
+    },
+    {
+      "displayName": "Request baseline access package assignment",
+      "description": "Assign the baseline access package through its direct-assignment policy.",
+      "isEnabled": true,
+      "continueOnError": false,
+      "taskDefinitionId": "c1ec1e76-f374-4375-aaa6-0bb6bd4c60be",
+      "arguments": [
+        {
+          "name": "accessPackageId",
+          "value": "${accessPackage:AP-Cross-Cloud Baseline}"
+        },
+        {
+          "name": "assignmentPolicyId",
+          "value": "${accessPackagePolicy:AP-Cross-Cloud Baseline|Direct assignment}"
+        }
+      ]
+    }
+  ]
+}

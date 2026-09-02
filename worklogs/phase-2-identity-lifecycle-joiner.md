@@ -37,6 +37,17 @@ Give a synthetic Joiner baseline Entra access automatically, before any interact
 
 The Joiner workflow ran, but the dynamic developer group skipped the user. The rule matched `user.jobTitle -eq "Cloud Engineer"`, and the stored value was `Cloud  Engineer` with two spaces. Dynamic membership rules compare strings literally and do not normalize whitespace, and the admin center collapses the extra space when it renders the attribute, so the value looked correct. Fixing the attribute resolved the membership. Relaxing the rule to `-contains "Cloud Engineer"` would also have worked, but it would match unintended titles such as `Senior Cloud Engineer`, so the attribute was corrected instead.
 
+## Workflow definitions as code
+
+Microsoft Graph Bicep cannot manage Lifecycle Workflows. It supports only `applications`, `appRoleAssignedTo`, `federatedIdentityCredentials`, `groups`, `oauth2PermissionGrants`, `servicePrincipals`, and `users`, so the Bicep pattern used for the dynamic groups does not extend to workflows. The definitions go to the Graph REST API as JSON instead, under `entra/lifecycle-workflows/`.
+
+Two API constraints shaped the deployment script:
+
+- A `PATCH` on a workflow accepts only `displayName`, `description`, `isEnabled`, and `isSchedulingEnabled`. Changing tasks or execution conditions requires `POST .../createNewVersion`. The script compares the two parts separately and picks the matching call.
+- Task arguments carry group, access package, and assignment policy object IDs. Committing them would publish tenant identifiers, so the definitions use display-name placeholders such as `${accessPackage:AP-Cross-Cloud Baseline}` that resolve at deployment time. Resolution fails when a name matches no object or more than one, so a rename produces an error rather than a wrong deployment.
+
+Committed definitions set `isSchedulingEnabled` to `false`. Attribute change triggers are only evaluated for scheduled workflows, so the Mover definition runs on demand until scheduling is enabled.
+
 ## Next steps
 
-Store the Lifecycle Workflow definitions as version-controlled Graph payloads, add the Mover and Leaver personas, and verify SCIM provisioning of the Joiner into IAM Identity Center.
+Export the deployed Joiner and reconcile it with the committed definition, deploy the Mover and Leaver definitions, add the Mover and Leaver personas, and verify SCIM provisioning of the Joiner into IAM Identity Center.
