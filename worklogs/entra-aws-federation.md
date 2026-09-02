@@ -34,15 +34,22 @@ Use Microsoft Entra ID as the workforce identity source for AWS IAM Identity Cen
 
 7. Assigned the group and permission set to the AWS account, then verified Entra-authenticated access through the AWS access portal.
 
+8. Configured the `cross-cloud-admin` AWS CLI SSO profile and completed browser authorization for temporary credentials.
+
+   ![AWS confirms successful CLI SSO authorization](../docs/images/phase-1-07-cli-sso-success.png)
+
 ## Validation
 
 - SAML trust was accepted by AWS IAM Identity Center.
 - SCIM created the assigned group and member in AWS.
 - The dynamic membership rule selected the expected member account.
 - The AWS access portal displayed the assigned account after Entra authentication.
+- AWS CLI SSO authorization completed successfully.
 
 ## Troubleshooting
 
 The initial SSO test was blocked because the user was not assigned to the enterprise application. Assigning the dynamic group resolved the failure while keeping assignment enforcement enabled.
 
-## Next
+## Next steps
+
+Implement the synthetic Joiner identity, automatic baseline entitlement, and Joiner Lifecycle Workflow.

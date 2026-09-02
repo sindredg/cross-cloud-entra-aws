@@ -2,9 +2,7 @@
 
 This project demonstrates cross-cloud workforce identity, authentication protocols, lifecycle governance, and private application access. Microsoft Entra Suite governs synthetic workforce identities and protects container workloads running on Amazon ECS.
 
-Repository: `entra+aws`
-
-> **Status:** Planning. The documentation baseline is written and Phase 0, prerequisites and environment readiness, is in progress. Nothing has been provisioned. Follow [`plan.md`](plan.md) and complete one verified phase at a time.
+> **Status:** Phase 1 complete. Microsoft Entra ID provides SAML authentication and SCIM provisioning to AWS IAM Identity Center. Console and CLI access use temporary SSO credentials. Phase 2 implements the Joiner lifecycle.
 
 ## Target architecture
 
@@ -79,7 +77,7 @@ flowchart LR
 | Entra applications | Microsoft Graph Bicep | Applications, service principals, scopes, roles, redirects, and supported assignments |
 | Entra governance | Microsoft Graph and PowerShell | Synthetic identities, access packages, Lifecycle Workflows, Private Access, Conditional Access, protection, and unsupported Bicep resources |
 | Applications | Containers on ECS Fargate | Protocol demonstrations and safe request/token inspection |
-| Interactive work | AWS and Entra portals | Root-only tasks, the bootstrap permission set, initial federation and SCIM secrets, consent, connector enrollment, and validation where automation is unsuitable |
+| Interactive work | AWS and Entra portals | Bootstrap access, initial federation and SCIM secrets, consent, connector enrollment, and validation where automation is unsuitable |
 
 ## Goals
 
@@ -97,19 +95,16 @@ flowchart LR
 
 ### AWS account and access
 
-- An AWS account with access to its root email address, recovery phone, and MFA device.
 - An existing administrative sign-in that remains available until federated access is tested.
 - Permission to enable IAM Identity Center, configure the identity source, create permission sets, manage the project resources, and configure AWS Budgets.
 - AWS Organizations management-account access only if the optional service control policy revocation scenario is implemented.
-
-The root user is the account owner, not the normal deployment identity. Protect it with MFA, create no root access keys, and use it only for tasks that AWS documents as root-only.
 
 ### Microsoft cloud
 
 - A Microsoft Entra tenant with a Microsoft Entra Suite trial or equivalent individual licenses assigned to the in-scope test users.
 - A dedicated administrative identity protected by MFA.
 - Least-privileged roles for the implemented phases, including Lifecycle Workflows Administrator, Identity Governance Administrator, Application Administrator, Conditional Access Administrator, and Global Secure Access Administrator where required.
-- An Azure subscription only if the optional Lifecycle Workflows custom task extension and Logic App are implemented.
+- An Azure subscription for Microsoft Graph Bicep deployments and the optional Lifecycle Workflows custom task extension.
 - A Windows 11 test device for the Global Secure Access client and Private Access validation.
 - A recorded trial start and expiry date, so licence-dependent phases run before the trial lapses.
 
@@ -135,22 +130,19 @@ Record the installed versions during Phase 0. The workstation CPU architecture a
 
 ## AWS bootstrap sequence
 
-1. Sign in as root only to verify recovery details, enable MFA, and confirm that no root access keys exist.
-2. Sign out of root and use the existing administrative identity for bootstrap work.
-3. Enable IAM Identity Center and configure Microsoft Entra ID as its external identity provider.
-4. Configure SCIM, provision the administrative Entra group, and interactively assign one short-session bootstrap permission set. Phase 3 imports or replaces it before Terraform becomes authoritative.
-5. Configure an AWS CLI SSO profile named `cross-cloud-admin` and verify both console and CLI access.
-6. Retain the previous administrative path until the federated path has been tested. Remove long-lived access only through a separate reviewed change.
+1. Enable IAM Identity Center and configure Microsoft Entra ID as its external identity provider.
+2. Configure SCIM and provision the administrative Entra group.
+3. Assign a short-session bootstrap permission set. Phase 3 imports or replaces it before Terraform becomes authoritative.
+4. Configure the `cross-cloud-admin` AWS CLI SSO profile and verify console and CLI access.
+5. Retain the previous administrative path until the federated path has been tested.
 
 ## AWS access baseline
 
-- Use the AWS root user only for tasks that require root credentials.
-- Protect root with MFA and never create root access keys.
 - Federate IAM Identity Center with Microsoft Entra ID for console and CLI access.
 - Use temporary credentials from the `cross-cloud-admin` SSO profile for Terraform.
 - Keep the existing administrative path until federated console and CLI access are tested.
 - Let SCIM own IAM Identity Center users and group memberships; Terraform must not mutate them.
-- Do not paste account IDs, role ARNs, access keys, or CLI output into committed files or worklogs.
+- Do not paste account IDs, role ARNs, credentials, or CLI output into committed files or worklogs.
 
 ## Working method
 
@@ -165,6 +157,7 @@ Record the installed versions during Phase 0. The workstation CPU architecture a
 - [`plan.md`](plan.md): ordered implementation phases and completion criteria.
 - [`decisions.md`](decisions.md): accepted planning and architecture decisions with documented alternatives.
 - [`worklogs/README.md`](worklogs/README.md): worklog naming and entry template.
+- [`worklogs/entra-aws-federation.md`](worklogs/entra-aws-federation.md): Phase 1 implementation and validation.
 - `scripts/check-prereqs.sh`: reports the local toolchain state for Phase 0.
 
 The project uses local Terraform state. State, private variable files, generated credentials, tokens, and deployment-specific parameter files stay outside version control.
