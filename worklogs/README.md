@@ -4,18 +4,18 @@ This directory is the chronological journal for **Cross-Cloud Identity with Micr
 
 ## Naming
 
-Use one focused Markdown file per meaningful work session:
+Use one focused Markdown file per meaningful phase or work session. Keep dates inside the entry, not in the filename:
 
 ```text
-YYYY-MM-DD-short-topic.md
+short-topic.md
 ```
 
 If several entries are written on the same date, add a sequence or a more specific topic. Examples:
 
 ```text
-2026-09-01-terraform-foundation.md
-2026-09-03-oidc-app-registration.md
-2026-09-03-oidc-login-validation.md
+terraform-foundation.md
+oidc-app-registration.md
+oidc-login-validation.md
 ```
 
 ## Entry template

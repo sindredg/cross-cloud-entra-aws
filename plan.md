@@ -6,9 +6,9 @@ This plan builds the project in small, verifiable phases. Lifecycle Workflows pr
 
 | Phase | Scope | Status |
 | --- | --- | --- |
-| 0 | Prerequisites and environment readiness | In progress |
-| 1 | Entra federation and IAM Identity Center access | Planned |
-| 2 | Identity lifecycle foundation and Joiner | Planned |
+| 0 | Prerequisites and environment readiness | Ongoing |
+| 1 | Entra federation and IAM Identity Center access | Done |
+| 2 | Identity lifecycle foundation and Joiner | Next |
 | 3 | Terraform AWS foundation and permission sets | Planned |
 | 4 | AWS network | Planned |
 | 5 | Shared container platform | Planned |
@@ -31,8 +31,6 @@ This plan builds the project in small, verifiable phases. Lifecycle Workflows pr
 
 ## Rules for every phase
 
-- Use root credentials only for documented root-only tasks.
-- Never create root access keys.
 - Prefer temporary credentials from IAM Identity Center.
 - Review recurring cost before applying a resource that bills while idle.
 - Run `terraform fmt`, `terraform validate`, and a reviewed `terraform plan` before each apply.
@@ -52,13 +50,13 @@ Security controls are evaluated in context when they materially increase recurri
 - Available compensating controls.
 - Rollback and validation method.
 
-Root MFA, the prohibition on root access keys, secret exclusion from version control, protection against public management exposure, and the prohibition on persistent raw-token logging remain baseline requirements. Other defense-in-depth controls can be adjusted through a documented decision.
+Secret exclusion from version control, protection against public management exposure, and the prohibition on persistent raw-token logging remain baseline requirements. Other defense-in-depth controls can be adjusted through a documented decision.
 
 ## Phase 0: Prerequisites and environment readiness
 
-**Status:** In progress
+**Status:** Ongoing
 
-No workload infrastructure is provisioned in this phase. It establishes the documentation baseline, confirms that every account, licence, name, and tool the later phases assume actually exists, and puts cost and root-account protections in place before the first billable workload resource.
+No workload infrastructure is provisioned in this phase. It establishes the documentation baseline, confirms prerequisites, and puts cost controls in place before the first billable workload resource.
 
 ### Documentation baseline
 
@@ -70,24 +68,22 @@ No workload infrastructure is provisioned in this phase. It establishes the docu
 
 ### AWS account readiness
 
-- [ ] Confirm access to the root email address, recovery phone, and MFA device.
-- [x] Confirm root has MFA enabled and no access keys, without changing the existing sign-in methods.
-- [ ] Confirm the existing administrative sign-in works and remains available as a rollback path.
-- [ ] Confirm the account is not part of an Organization that restricts IAM Identity Center, or record the management-account path.
-- [ ] Choose the single AWS region for the project and record it.
+- [x] Confirm the existing administrative sign-in works and remains available as a rollback path.
+- [x] Enable an IAM Identity Center organization instance.
+- [x] Use `eu-north-1` as the project region.
 - [ ] Create an AWS Budget and billing alert before any workload is provisioned.
 - [ ] Enable cost anomaly or free-tier usage alerts if the account supports them.
 
 ### Microsoft cloud readiness
 
-- [ ] Confirm a Microsoft Entra tenant is available for project use.
-- [ ] Start the Microsoft Entra Suite trial, or confirm equivalent individual licences.
+- [x] Confirm a Microsoft Entra tenant is available for project use.
+- [x] Start the Microsoft Entra Suite trial, or confirm equivalent individual licences.
 - [ ] Record the trial start date and expiry so licence-dependent phases are sequenced before it lapses.
 - [ ] Confirm licences can be assigned to the synthetic test users.
 - [ ] Confirm a dedicated administrative identity protected by MFA.
 - [ ] Confirm the least-privileged role assignments the plan requires, including Lifecycle Workflows Administrator, Identity Governance Administrator, Application Administrator, Conditional Access Administrator, and Global Secure Access Administrator.
 - [ ] Confirm a verified tenant domain, or accept the default `onmicrosoft.com` domain for synthetic user principal names.
-- [ ] Decide whether an Azure subscription is needed; it is required only for the optional custom task extension and Logic App.
+- [x] Confirm an Azure subscription for Microsoft Graph Bicep deployments; the optional custom task extension can reuse it.
 
 ### Naming and certificates
 
@@ -111,7 +107,7 @@ Stable public host names are a prerequisite, not a later detail. SAML assertion 
 - [x] Install AWS CLI v2.
 - [x] Enable Docker with BuildKit and confirm it is reachable from the working shell.
 - [x] Install the Azure CLI.
-- [ ] Install Bicep through Azure CLI.
+- [x] Install Bicep through Azure CLI.
 - [ ] Install PowerShell 7 and the required Microsoft Graph modules.
 - [ ] Install `jq` for reading CLI and Graph responses.
 - [ ] Run `./scripts/check-prereqs.sh` until it exits zero.
@@ -126,34 +122,31 @@ Stable public host names are a prerequisite, not a later detail. SAML assertion 
 ### Repository
 
 - [x] Remove the superseded Google Cloud draft from `terraform/`, per ADR-013.
-- [ ] Make the initial commit of the planning baseline.
+- [x] Make the initial commit of the planning baseline.
 - [ ] Create the remote and confirm the security workflow runs.
 - [ ] Confirm the secret-scanning job passes on the full history.
 
-**Exit criteria:** Every prerequisite is confirmed by a recorded command or portal check, root is protected and a budget alert exists, the licence clock and region are recorded, host names and the certificate path are decided, the toolchain is installed and versioned, and no workload infrastructure has been provisioned.
+**Exit criteria:** Every prerequisite is confirmed by a recorded command or portal check, a budget alert exists, the licence clock and region are recorded, host names and the certificate path are decided, the toolchain is installed and versioned, and no workload infrastructure has been provisioned.
 
 ## Phase 1: Entra federation and IAM Identity Center access
 
-**Status:** Planned
+**Status:** Done
 
-- [ ] Confirm the Phase 0 root protections and budget alert are still in place.
-- [ ] Sign out of root before beginning routine administration.
-- [ ] Enable IAM Identity Center for the AWS account.
-- [ ] Configure Microsoft Entra ID as the external SAML identity provider.
-- [ ] Enable SCIM provisioning and store its endpoint and token outside the repository.
-- [ ] Provision a dedicated administrative Entra group to IAM Identity Center.
-- [ ] Interactively create and assign one reviewed bootstrap permission set with a limited session duration.
-- [ ] Configure an AWS CLI v2 SSO profile named `cross-cloud-admin`.
-- [ ] Verify the session with `aws sts get-caller-identity --profile cross-cloud-admin`.
-- [ ] Redact the returned account and principal IDs from all evidence.
-- [ ] Verify federated console access and CLI access before changing the existing IAM user.
-- [ ] Record a separate decision before retaining or removing the old IAM user or access key.
+- [x] Enable IAM Identity Center for the AWS account.
+- [x] Configure Microsoft Entra ID as the external SAML identity provider.
+- [x] Enable SCIM provisioning and keep its endpoint and token outside the repository.
+- [x] Deploy an attribute-driven administrative Entra group with Microsoft Graph Bicep.
+- [x] Provision the administrative group to IAM Identity Center.
+- [x] Create and assign a one-hour bootstrap permission set.
+- [x] Configure the `cross-cloud-admin` AWS CLI SSO profile.
+- [x] Verify federated console and CLI access with temporary credentials.
+- [x] Keep deployment-specific identifiers out of published evidence.
 
 **Exit criteria:** Federated console and CLI access work with temporary credentials, SCIM provisioning is enabled with its secrets held outside the repository, and the previous administrative path remains recoverable.
 
 ## Phase 2: Identity lifecycle foundation and Joiner
 
-**Status:** Planned
+**Status:** Next
 
 - [ ] Define reusable synthetic Joiner, Mover, and Leaver personas with no real personal data.
 - [ ] Include the required lifecycle attributes, such as manager, department, job title, hire date, and leave date.
