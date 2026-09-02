@@ -1,4 +1,4 @@
-# Entra federation and AWS access
+# Phase 1: Entra federation and AWS access
 
 **Date:** 2026-09-01
 

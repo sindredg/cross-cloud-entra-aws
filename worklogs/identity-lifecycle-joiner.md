@@ -1,4 +1,4 @@
-# Identity lifecycle foundation and Joiner
+# Phase 2: Identity lifecycle foundation and Joiner
 
 **Date:** 2026-09-02
 

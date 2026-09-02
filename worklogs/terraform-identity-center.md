@@ -1,4 +1,4 @@
-# Terraform AWS foundation and permission sets
+# Phase 3: Terraform AWS foundation and permission sets
 
 **Date:** 2026-09-02
 
