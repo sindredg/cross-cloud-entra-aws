@@ -1,4 +1,4 @@
-# Phase 0 project readiness
+# Phase 0: Project readiness
 
 **Date:** 2026-09-01
 

@@ -274,3 +274,29 @@ A portfolio project should demonstrate informed risk decisions as well as secure
 - Implement every production control regardless of cost or friction. Rejected because the project is not a production service and some controls would hide the architecture under unrelated operations. See the [AWS Well-Architected Security Pillar](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/welcome.html).
 - Remove any control that slows implementation. Rejected because efficiency alone does not justify accepting credential exposure, account lockout, public management access, or irreversible changes.
 - Make undocumented exceptions. Rejected because later readers could not distinguish a conscious risk decision from an omission. Use the decision log and the [AWS Well-Architected Cost Optimization Pillar](https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/welcome.html) to record the tradeoff.
+
+## ADR-015: Control cost by phase review instead of an AWS Budget
+
+**Status:** Accepted
+**Date:** 2026-09-02
+
+### Decision
+
+Do not create an AWS Budget, billing alert, or cost anomaly detector for this project. Control cost with the per-phase rule already in `plan.md`: review recurring cost before applying any resource that bills while idle, and destroy billable resources during Phase 11. This decision applies the ADR-014 framework.
+
+- **Threat:** Unnoticed spend from a resource that bills while idle, such as a NAT gateway, an Application Load Balancer, or the connector EC2 host.
+- **Risk reduction from a budget:** Low. A budget alert is retrospective. It reports spend that already happened, often a day late, and does not prevent the resource from being created.
+- **Cost and friction:** Setup is cheap, but the alert needs a verified notification path and adds a control that no phase exercises.
+- **Effect on learning objectives:** None. Cost alerting is not part of the identity scenario the project demonstrates.
+- **Compensating controls:** Every billable resource is introduced by a reviewed `terraform plan` in a single account. The phase checklists name each idle-billing resource before it is created. Phase 11 destroys them.
+- **Rollback:** Create a budget in the Billing console at any time. No project resource depends on its absence.
+
+### Why
+
+The project is a short-lived, single-account portfolio build where every billable resource is created deliberately through a reviewed plan. The reviewed plan prevents the spend; a budget alert would only report it afterwards.
+
+### Alternatives
+
+- Create an AWS Budget with an email alert. Rejected as retrospective for a project whose spend is already gated by a reviewed `terraform plan`. See [Managing your costs with AWS Budgets](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html).
+- Enable AWS Cost Anomaly Detection. Rejected because anomaly detection needs a spend baseline that a short project never establishes. See [AWS Cost Anomaly Detection](https://docs.aws.amazon.com/cost-management/latest/userguide/manage-ad.html).
+- Track nothing and check the console occasionally. Rejected because it leaves no written rule, which ADR-014 requires for a removed control.

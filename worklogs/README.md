@@ -4,19 +4,21 @@ This directory is the chronological journal for **Cross-Cloud Identity with Micr
 
 ## Naming
 
-Use one focused Markdown file per meaningful phase or work session. Keep dates inside the entry, not in the filename:
+Use one focused Markdown file per phase or work session. Prefix the filename with the phase number from [`plan.md`](../plan.md) so the directory sorts in plan order. Keep dates inside the entry, not in the filename:
 
 ```text
-short-topic.md
+phase-<number>-<short-topic>.md
 ```
 
-If several entries are written on the same date, add a sequence or a more specific topic. Examples:
+Examples:
 
 ```text
-terraform-foundation.md
-oidc-app-registration.md
-oidc-login-validation.md
+phase-0-readiness.md
+phase-1-entra-aws-federation.md
+phase-4-aws-network.md
 ```
+
+If a phase needs several entries, keep the same prefix and use a more specific topic, such as `phase-4-aws-network-egress.md`. Start the entry title with the same phase number.
 
 ## Entry template
 
