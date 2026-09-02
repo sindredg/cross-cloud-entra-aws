@@ -6,72 +6,163 @@
     "_generator": {
       "name": "bicep",
       "version": "0.46.1.21595",
-      "templateHash": "4666170667702300749"
+      "templateHash": "843435578920123270"
+    }
+  },
+  "definitions": {
+    "dynamicGroupConfiguration": {
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "uniqueName": {
+          "type": "string"
+        },
+        "mailNickname": {
+          "type": "string"
+        },
+        "membershipRule": {
+          "type": "string"
+        }
+      }
     }
   },
   "parameters": {
-    "groupDisplayName": {
-      "type": "string",
-      "defaultValue": "AWS-Administrators",
+    "groups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/dynamicGroupConfiguration"
+      },
       "metadata": {
-        "description": "Display name of the AWS administrator group."
+        "description": "Dynamic security groups managed by this deployment."
       }
-    },
-    "groupUniqueName": {
-      "type": "string",
-      "defaultValue": "crossCloudAwsAdministrators",
-      "metadata": {
-        "description": "Immutable identifier used by Microsoft Graph Bicep."
-      }
-    },
-    "requiredDepartment": {
-      "type": "string",
-      "defaultValue": "Cloud Platform",
-      "metadata": {
-        "description": "Department required for membership."
-      }
-    },
-    "requiredJobTitle": {
-      "type": "string",
-      "defaultValue": "Cloud Administrator",
-      "metadata": {
-        "description": "Job title required for membership."
-      }
-    }
-  },
-  "imports": {
-    "microsoftGraphV1": {
-      "provider": "MicrosoftGraph",
-      "version": "1.0.0"
     }
   },
   "resources": {
-    "awsAdministrators": {
-      "import": "microsoftGraphV1",
-      "type": "Microsoft.Graph/groups@v1.0",
+    "dynamicGroups": {
+      "copy": {
+        "name": "dynamicGroups",
+        "count": "[length(parameters('groups'))]"
+      },
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('dynamic-group-{0}', uniqueString(parameters('groups')[copyIndex()].uniqueName))]",
       "properties": {
-        "displayName": "[parameters('groupDisplayName')]",
-        "description": "Identities eligible for AWS administrator access.",
-        "uniqueName": "[parameters('groupUniqueName')]",
-        "mailEnabled": false,
-        "mailNickname": "aws-administrators",
-        "securityEnabled": true,
-        "groupTypes": [
-          "DynamicMembership"
-        ],
-        "membershipRule": "[format('(user.accountEnabled -eq true) and (user.userType -eq \"Member\") and (user.department -eq \"{0}\") and (user.jobTitle -eq \"{1}\")', parameters('requiredDepartment'), parameters('requiredJobTitle'))]",
-        "membershipRuleProcessingState": "On"
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "displayName": {
+            "value": "[parameters('groups')[copyIndex()].displayName]"
+          },
+          "groupDescription": {
+            "value": "[parameters('groups')[copyIndex()].description]"
+          },
+          "uniqueName": {
+            "value": "[parameters('groups')[copyIndex()].uniqueName]"
+          },
+          "mailNickname": {
+            "value": "[parameters('groups')[copyIndex()].mailNickname]"
+          },
+          "membershipRule": {
+            "value": "[parameters('groups')[copyIndex()].membershipRule]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "2.0",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.46.1.21595",
+              "templateHash": "6496671026276232245"
+            }
+          },
+          "parameters": {
+            "displayName": {
+              "type": "string",
+              "minLength": 1,
+              "metadata": {
+                "description": "Display name shown in Microsoft Entra ID."
+              }
+            },
+            "groupDescription": {
+              "type": "string",
+              "minLength": 1,
+              "metadata": {
+                "description": "Purpose of the group."
+              }
+            },
+            "uniqueName": {
+              "type": "string",
+              "minLength": 1,
+              "metadata": {
+                "description": "Immutable alternate key used for repeatable Microsoft Graph deployments."
+              }
+            },
+            "mailNickname": {
+              "type": "string",
+              "minLength": 1,
+              "metadata": {
+                "description": "Mail nickname required by Microsoft Graph, even when mail is disabled."
+              }
+            },
+            "membershipRule": {
+              "type": "string",
+              "minLength": 1,
+              "metadata": {
+                "description": "Microsoft Entra dynamic membership rule."
+              }
+            }
+          },
+          "imports": {
+            "microsoftGraphV1": {
+              "provider": "MicrosoftGraph",
+              "version": "1.0.0"
+            }
+          },
+          "resources": {
+            "dynamicGroup": {
+              "import": "microsoftGraphV1",
+              "type": "Microsoft.Graph/groups@v1.0",
+              "properties": {
+                "displayName": "[parameters('displayName')]",
+                "description": "[parameters('groupDescription')]",
+                "uniqueName": "[parameters('uniqueName')]",
+                "mailEnabled": false,
+                "mailNickname": "[parameters('mailNickname')]",
+                "securityEnabled": true,
+                "groupTypes": [
+                  "DynamicMembership"
+                ],
+                "membershipRule": "[parameters('membershipRule')]",
+                "membershipRuleProcessingState": "On"
+              }
+            }
+          },
+          "outputs": {
+            "displayName": {
+              "type": "string",
+              "value": "[reference('dynamicGroup').displayName]"
+            }
+          }
+        }
       }
     }
   },
   "outputs": {
-    "groupDisplayName": {
-      "type": "string",
-      "value": "[reference('awsAdministrators').displayName]"
-    },
-    "groupId": {
-      "type": "string",
-      "value": "[reference('awsAdministrators').id]"
+    "groupDisplayNames": {
+      "type": "array",
+      "copy": {
+        "count": "[length(parameters('groups'))]",
+        "input": "[reference(format('dynamicGroups[{0}]', copyIndex())).outputs.displayName.value]"
+      }
     }
   }
 }
