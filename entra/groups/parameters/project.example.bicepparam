@@ -6,7 +6,7 @@ param groups = [
     description: 'Identities eligible for AWS administrator access.'
     uniqueName: 'crossCloudAwsAdministrators'
     mailNickname: 'aws-administrators'
-    membershipRule: '(user.accountEnabled -eq true) and (user.userType -eq "Member") and (user.department -eq "Cloud Platform") and (user.jobTitle -eq "Cloud Administrator")'
+    membershipRule: '(user.accountEnabled -eq true) and (user.userType -eq "Member") and (user.companyName -eq "CrossCloud Identity Project") and (user.department -eq "Cloud Platform") and (user.jobTitle -eq "Cloud Administrator")'
   }
   {
     displayName: 'CrossCloud-Workforce'
