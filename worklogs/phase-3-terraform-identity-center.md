@@ -29,6 +29,23 @@ Manage IAM Identity Center permission sets and their account assignments with Te
 - The AWS account shows `AWS-Administrators`, `AWS-Developers`, and `AWS-Auditors` mapped to their permission sets.
 - The group lookups resolved without Terraform creating or mutating any user or group membership.
 
+## Plan reconciliation
+
+Closing Phase 3 exposed Phase 0 items that were never blocking work in progress. The plan now records each one where it is actually needed:
+
+| Item | Outcome |
+| --- | --- |
+| AWS Budget and cost anomaly alerts | Removed. ADR-015 records the cost-control decision. |
+| Bootstrap permission set | Removed from AWS. The Terraform-managed administrator path is the only administrative route. |
+| DNS domain, certificate path, public host names | Moved to Phase 7, which registers the applications that depend on them. |
+| Windows 11 device and Global Secure Access client | Moved to Phase 9, which installs the connector. |
+| PowerShell 7, Microsoft Graph modules, `jq` | Moved to Phase 2, which needs them for Lifecycle Workflow payloads. |
+| Fargate CPU architecture decision | Moved to Phase 6, which builds the first image. |
+| CIDR and feature-flag variables | Moved to Phase 4, which introduces the network. |
+| `scripts/check-prereqs.sh` | Reference removed. The script belongs to an unrelated repository and was never committed here. |
+
+Worklog filenames now carry the phase number so the directory sorts in plan order.
+
 ## Next steps
 
-Retire the unmanaged bootstrap permission set from Phase 1 once the Terraform-managed administrator path is confirmed, and add compact outputs for later phases.
+Phase 4 has no unmet prerequisite and can start. Before it does, Phase 2 still needs the Lifecycle Workflow definitions exported to version-controlled JSON, the Mover and Leaver workflows created with scheduling disabled, and SCIM provisioning of the Joiner verified in IAM Identity Center.

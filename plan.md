@@ -9,7 +9,7 @@ This plan builds the project in small, verifiable phases. Lifecycle Workflows pr
 | 0 | Prerequisites and environment readiness | Ongoing |
 | 1 | Entra federation and IAM Identity Center access | Done |
 | 2 | Identity lifecycle foundation and Joiner | Ongoing |
-| 3 | Terraform AWS foundation and permission sets | Ongoing |
+| 3 | Terraform AWS foundation and permission sets | Done |
 | 4 | AWS network | Planned |
 | 5 | Shared container platform | Planned |
 | 6 | First ECS service | Planned |
@@ -71,34 +71,28 @@ No workload infrastructure is provisioned in this phase. It establishes the docu
 - [x] Confirm the existing administrative sign-in works and remains available as a rollback path.
 - [x] Enable an IAM Identity Center organization instance.
 - [x] Use `eu-north-1` as the project region.
-- [ ] Create an AWS Budget and billing alert before any workload is provisioned.
-- [ ] Enable cost anomaly or free-tier usage alerts if the account supports them.
+- [x] Decide the cost-control approach before any workload is provisioned; ADR-015 records why this project reviews cost per phase instead of creating an AWS Budget.
 
 ### Microsoft cloud readiness
 
 - [x] Confirm a Microsoft Entra tenant is available for project use.
 - [x] Start the Microsoft Entra Suite trial, or confirm equivalent individual licences.
 - [ ] Record the trial start date and expiry so licence-dependent phases are sequenced before it lapses.
-- [ ] Confirm licences can be assigned to the synthetic test users.
+- [x] Confirm licences can be assigned to the synthetic test users; the Phase 2 Joiner run exercised governance licensing.
 - [ ] Confirm a dedicated administrative identity protected by MFA.
 - [ ] Confirm the least-privileged role assignments the plan requires, including Lifecycle Workflows Administrator, Identity Governance Administrator, Application Administrator, Conditional Access Administrator, and Global Secure Access Administrator.
 - [ ] Confirm a verified tenant domain, or accept the default `onmicrosoft.com` domain for synthetic user principal names.
 - [x] Confirm an Azure subscription for Microsoft Graph Bicep deployments; the optional custom task extension can reuse it.
 
-### Naming and certificates
+### Naming
 
-- [ ] Register or designate a DNS domain for the public application host names.
-- [ ] Decide between a Route 53 hosted zone and delegation from an external registrar.
-- [ ] Confirm the AWS Certificate Manager public certificate path with DNS validation.
-- [ ] Reserve the host names for `saml-web`, `oidc-web`, `oauth-api`, and `private-web`.
-- [ ] Choose the resource name prefix and the environment tag value.
+- [x] Choose the resource name prefix and the environment tag value; `terraform/variables.tf` sets `crosscloud` and `project`.
 
-Stable public host names are a prerequisite, not a later detail. SAML assertion consumer service URLs, OIDC redirect URIs, and the HTTPS load-balancer listener all depend on names that do not change once the Entra applications are registered.
+DNS, certificate, and public host-name decisions moved to Phase 7, which registers the Entra applications that depend on them. They do not block Phases 4 through 6.
 
 ### Test device
 
-- [ ] Confirm a Windows 11 device is available for the Global Secure Access client.
-- [ ] Confirm the device can install the client and is not blocked by an existing management policy.
+Windows 11 and Global Secure Access client checks moved to Phase 9, the phase that installs the connector.
 
 ### Local workstation toolchain
 
@@ -108,25 +102,24 @@ Stable public host names are a prerequisite, not a later detail. SAML assertion 
 - [x] Enable Docker with BuildKit and confirm it is reachable from the working shell.
 - [x] Install the Azure CLI.
 - [x] Install Bicep through Azure CLI.
-- [ ] Install PowerShell 7 and the required Microsoft Graph modules.
-- [ ] Install `jq` for reading CLI and Graph responses.
-- [ ] Run `./scripts/check-prereqs.sh` until it exits zero.
-- [ ] Record every installed version so the worklog documents a reproducible toolchain.
+- [x] Record every installed version so the worklog documents a reproducible toolchain.
+
+PowerShell 7, the Microsoft Graph modules, and `jq` moved to Phase 2, which needs them to export and deploy Lifecycle Workflow payloads.
 
 ### Build architecture
 
-- [ ] Record the workstation CPU architecture.
-- [ ] Decide the Fargate CPU architecture, either matching the workstation or cross-building for the other platform.
-- [ ] Record the decision before the first container image is built.
+- [x] Record the workstation CPU architecture; the Phase 0 worklog records Linux ARM64.
+
+The Fargate CPU architecture decision moved to Phase 6, the phase that builds the first container image.
 
 ### Repository
 
 - [x] Remove the superseded Google Cloud draft from `terraform/`, per ADR-013.
 - [x] Make the initial commit of the planning baseline.
-- [ ] Create the remote and confirm the security workflow runs.
-- [ ] Confirm the secret-scanning job passes on the full history.
+- [x] Create the remote and confirm the security workflow runs.
+- [x] Confirm the secret-scanning job passes on the full history.
 
-**Exit criteria:** Every prerequisite is confirmed by a recorded command or portal check, a budget alert exists, the licence clock and region are recorded, host names and the certificate path are decided, the toolchain is installed and versioned, and no workload infrastructure has been provisioned.
+**Exit criteria:** Every remaining prerequisite is confirmed by a recorded command or portal check, the cost-control approach and region are recorded, the toolchain is installed and versioned, and no workload infrastructure has been provisioned. Nothing left in this phase blocks Phase 4.
 
 ## Phase 1: Entra federation and IAM Identity Center access
 
@@ -148,12 +141,15 @@ Stable public host names are a prerequisite, not a later detail. SAML assertion 
 
 **Status:** Ongoing
 
+- [ ] Install PowerShell 7 and the required Microsoft Graph modules, moved from Phase 0.
+- [ ] Install `jq` for reading Graph responses, moved from Phase 0.
 - [ ] Define reusable synthetic Joiner, Mover, and Leaver personas with no real personal data.
 - [ ] Include the required lifecycle attributes, such as manager, department, job title, hire date, and leave date.
 - [ ] Create an idempotent Graph bootstrap path for the synthetic identities; Lifecycle Workflows do not create the source identity.
 - [x] Create baseline security groups and an Entitlement Management catalog.
 - [x] Create a baseline access package with a direct-assignment policy and no approval requirement.
-- [ ] Store Lifecycle Workflow definitions as version-controlled Graph payloads or PowerShell configuration.
+- [ ] Export the Joiner workflow from Microsoft Graph and store every Lifecycle Workflow definition as a version-controlled JSON payload under `entra/lifecycle-workflows/`.
+- [ ] Add a documented, idempotent deployment path that creates or updates a workflow from its JSON payload.
 - [ ] Create Joiner, Mover, and Leaver workflows with scheduling disabled until their on-demand tests pass.
 - [x] Configure the Joiner workflow to assign the baseline package automatically before first sign-in.
 - [x] Run the Joiner workflow on demand for one synthetic user.
@@ -164,16 +160,16 @@ Stable public host names are a prerequisite, not a later detail. SAML assertion 
 
 ## Phase 3: Terraform AWS foundation and permission sets
 
-**Status:** Ongoing
+**Status:** Done
 
 - [x] Add pinned Terraform and AWS provider versions.
 - [x] Configure the AWS provider to use the `cross-cloud-admin` SSO profile or ambient temporary credentials.
-- [ ] Add validated variables for region, name prefix, environment, CIDRs, and feature flags.
-- [ ] Derive names, tags, and service maps in `locals.tf`.
+- [x] Add validated variables for region, name prefix, and environment; Phase 4 adds the network CIDRs and feature flags.
+- [x] Derive names, tags, and service maps in `locals.tf`.
 - [x] Add a placeholder-only `terraform.tfvars.example`.
 - [x] Keep local state and private tfvars ignored.
 - [x] Add an architecture-level `identity_center` module for permission sets and group-to-account assignments.
-- [ ] Import the bootstrap permission set into Terraform or replace it, validate the new access path, and then remove the unmanaged bootstrap resource.
+- [x] Import the bootstrap permission set into Terraform or replace it, validate the new access path, and then remove the unmanaged bootstrap resource.
 - [x] Look up SCIM-provisioned groups by stable display name; do not create users or group memberships with Terraform.
 - [x] Add compact outputs that do not expose credentials or deployment-specific IDs.
 - [x] Initialize, format, validate, and review the plan before applying the Identity Center resources.
@@ -184,6 +180,7 @@ Stable public host names are a prerequisite, not a later detail. SAML assertion 
 
 **Status:** Planned
 
+- [ ] Add validated CIDR and feature-flag variables, moved from Phase 3.
 - [ ] Create a `network` module with a VPC across two Availability Zones.
 - [ ] Create public subnets for public load-balancer nodes.
 - [ ] Create private subnets for Fargate tasks and the connector EC2 host.
@@ -212,6 +209,7 @@ Stable public host names are a prerequisite, not a later detail. SAML assertion 
 
 **Status:** Planned
 
+- [ ] Decide the Fargate CPU architecture, either matching the ARM64 workstation or cross-building, and record the decision before the first image build. Moved from Phase 0.
 - [ ] Build a minimal health application as a container.
 - [ ] Push an immutable image tag to ECR.
 - [ ] Create one reusable `ecs_service` module.
@@ -225,6 +223,10 @@ Stable public host names are a prerequisite, not a later detail. SAML assertion 
 
 **Status:** Planned
 
+- [ ] Register or designate a DNS domain for the public application host names, moved from Phase 0.
+- [ ] Decide between a Route 53 hosted zone and delegation from an external registrar, moved from Phase 0.
+- [ ] Confirm the AWS Certificate Manager public certificate path with DNS validation, moved from Phase 0.
+- [ ] Reserve the host names for `saml-web`, `oidc-web`, `oauth-api`, and `private-web` before registering the Entra applications, moved from Phase 0.
 - [ ] Create the `entra/` structure for Graph Bicep, Graph payloads, and idempotent cleanup automation.
 - [ ] Create scenario-level application definitions for SAML, OIDC, and OAuth.
 - [ ] Derive scope and app-role GUIDs instead of committing tenant-specific values.
@@ -259,6 +261,7 @@ Stable public host names are a prerequisite, not a later detail. SAML assertion 
 
 **Status:** Planned
 
+- [ ] Confirm a Windows 11 device is available for the Global Secure Access client and is not blocked by an existing management policy. Moved from Phase 0.
 - [ ] Create a `private_access_connector` module for a Windows Server EC2 host.
 - [ ] Place the host in a private subnet without a public IP.
 - [ ] Grant outbound access required by Microsoft and access to the internal load balancer only.

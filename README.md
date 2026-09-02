@@ -132,7 +132,7 @@ Record the installed versions during Phase 0. The workstation CPU architecture a
 
 1. Enable IAM Identity Center and configure Microsoft Entra ID as its external identity provider.
 2. Configure SCIM and provision the administrative Entra group.
-3. Assign a short-session bootstrap permission set. Phase 3 imports or replaces it before Terraform becomes authoritative.
+3. Assign a short-session bootstrap permission set. Phase 3 replaced it, so Terraform is now authoritative for every permission set.
 4. Configure the `cross-cloud-admin` AWS CLI SSO profile and verify console and CLI access.
 5. Retain the previous administrative path until the federated path has been tested.
 
@@ -157,11 +157,11 @@ Record the installed versions during Phase 0. The workstation CPU architecture a
 - [`plan.md`](plan.md): ordered implementation phases and completion criteria.
 - [`decisions.md`](decisions.md): accepted planning and architecture decisions with documented alternatives.
 - [`worklogs/README.md`](worklogs/README.md): worklog naming and entry template.
-- [`worklogs/entra-aws-federation.md`](worklogs/entra-aws-federation.md): Phase 1 implementation and validation.
-- [`worklogs/identity-lifecycle-joiner.md`](worklogs/identity-lifecycle-joiner.md): Phase 2 dynamic groups, Joiner workflow, and baseline access delivery.
-- [`worklogs/terraform-identity-center.md`](worklogs/terraform-identity-center.md): Phase 3 Terraform permission sets and account assignments.
+- [`worklogs/phase-0-readiness.md`](worklogs/phase-0-readiness.md): Phase 0 toolchain and repository readiness.
+- [`worklogs/phase-1-entra-aws-federation.md`](worklogs/phase-1-entra-aws-federation.md): Phase 1 SAML federation, SCIM provisioning, and first federated access.
+- [`worklogs/phase-2-identity-lifecycle-joiner.md`](worklogs/phase-2-identity-lifecycle-joiner.md): Phase 2 dynamic groups, Joiner workflow, and baseline access delivery.
+- [`worklogs/phase-3-terraform-identity-center.md`](worklogs/phase-3-terraform-identity-center.md): Phase 3 Terraform permission sets and account assignments.
 - [`terraform/`](terraform/): AWS IAM Identity Center permission sets and account assignments.
 - [`entra/groups/`](entra/groups/): Microsoft Graph Bicep for the dynamic security groups.
-- `scripts/check-prereqs.sh`: reports the local toolchain state for Phase 0.
 
 The project uses local Terraform state. State, private variable files, generated credentials, tokens, and deployment-specific parameter files stay outside version control.
