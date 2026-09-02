@@ -1,0 +1,65 @@
+{
+  "category": "mover",
+  "displayName": "Move cross-cloud worker to a new role",
+  "description": "Swap entitlements when the job title or department of a project identity changes.",
+  "isEnabled": true,
+  "isSchedulingEnabled": false,
+  "executionConditions": {
+    "@odata.type": "#microsoft.graph.identityGovernance.triggerAndScopeBasedConditions",
+    "scope": {
+      "@odata.type": "#microsoft.graph.identityGovernance.ruleBasedSubjectSet",
+      "rule": "(companyName eq 'CrossCloud Identity Project')"
+    },
+    "trigger": {
+      "@odata.type": "#microsoft.graph.identityGovernance.attributeChangeTrigger",
+      "triggerAttributes": [
+        {
+          "name": "jobTitle"
+        },
+        {
+          "name": "department"
+        }
+      ]
+    }
+  },
+  "tasks": [
+    {
+      "displayName": "Remove the previous access package assignment",
+      "description": "Remove the entitlement that belonged to the previous role.",
+      "isEnabled": true,
+      "continueOnError": true,
+      "taskDefinitionId": "4a0b64f2-c7ec-46ba-b117-18f262946c50",
+      "arguments": [
+        {
+          "name": "accessPackageId",
+          "value": "${accessPackage:AP-Cross-Cloud Baseline}"
+        }
+      ]
+    },
+    {
+      "displayName": "Request the new access package assignment",
+      "description": "Assign the entitlement that belongs to the new role.",
+      "isEnabled": true,
+      "continueOnError": false,
+      "taskDefinitionId": "c1ec1e76-f374-4375-aaa6-0bb6bd4c60be",
+      "arguments": [
+        {
+          "name": "accessPackageId",
+          "value": "${accessPackage:AP-Cross-Cloud Elevated}"
+        },
+        {
+          "name": "assignmentPolicyId",
+          "value": "${accessPackagePolicy:AP-Cross-Cloud Elevated|Direct assignment}"
+        }
+      ]
+    },
+    {
+      "displayName": "Revoke all refresh tokens for user",
+      "description": "Force new claims by invalidating existing refresh and session tokens.",
+      "isEnabled": true,
+      "continueOnError": false,
+      "taskDefinitionId": "509589a4-0466-4471-829e-49c5e502bdee",
+      "arguments": []
+    }
+  ]
+}
