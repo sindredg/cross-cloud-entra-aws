@@ -1,0 +1,77 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.46.1.21595",
+      "templateHash": "4666170667702300749"
+    }
+  },
+  "parameters": {
+    "groupDisplayName": {
+      "type": "string",
+      "defaultValue": "AWS-Administrators",
+      "metadata": {
+        "description": "Display name of the AWS administrator group."
+      }
+    },
+    "groupUniqueName": {
+      "type": "string",
+      "defaultValue": "crossCloudAwsAdministrators",
+      "metadata": {
+        "description": "Immutable identifier used by Microsoft Graph Bicep."
+      }
+    },
+    "requiredDepartment": {
+      "type": "string",
+      "defaultValue": "Cloud Platform",
+      "metadata": {
+        "description": "Department required for membership."
+      }
+    },
+    "requiredJobTitle": {
+      "type": "string",
+      "defaultValue": "Cloud Administrator",
+      "metadata": {
+        "description": "Job title required for membership."
+      }
+    }
+  },
+  "imports": {
+    "microsoftGraphV1": {
+      "provider": "MicrosoftGraph",
+      "version": "1.0.0"
+    }
+  },
+  "resources": {
+    "awsAdministrators": {
+      "import": "microsoftGraphV1",
+      "type": "Microsoft.Graph/groups@v1.0",
+      "properties": {
+        "displayName": "[parameters('groupDisplayName')]",
+        "description": "Identities eligible for AWS administrator access.",
+        "uniqueName": "[parameters('groupUniqueName')]",
+        "mailEnabled": false,
+        "mailNickname": "aws-administrators",
+        "securityEnabled": true,
+        "groupTypes": [
+          "DynamicMembership"
+        ],
+        "membershipRule": "[format('(user.accountEnabled -eq true) and (user.userType -eq \"Member\") and (user.department -eq \"{0}\") and (user.jobTitle -eq \"{1}\")', parameters('requiredDepartment'), parameters('requiredJobTitle'))]",
+        "membershipRuleProcessingState": "On"
+      }
+    }
+  },
+  "outputs": {
+    "groupDisplayName": {
+      "type": "string",
+      "value": "[reference('awsAdministrators').displayName]"
+    },
+    "groupId": {
+      "type": "string",
+      "value": "[reference('awsAdministrators').id]"
+    }
+  }
+}
