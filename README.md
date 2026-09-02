@@ -163,5 +163,6 @@ Record the installed versions during Phase 0. The workstation CPU architecture a
 - [`worklogs/phase-3-terraform-identity-center.md`](worklogs/phase-3-terraform-identity-center.md): Phase 3 Terraform permission sets and account assignments.
 - [`terraform/`](terraform/): AWS IAM Identity Center permission sets and account assignments.
 - [`entra/groups/`](entra/groups/): Microsoft Graph Bicep for the dynamic security groups.
+- [`entra/lifecycle-workflows/`](entra/lifecycle-workflows/): Joiner, Mover, and Leaver definitions as Graph JSON, with export and deploy scripts.
 
 The project uses local Terraform state. State, private variable files, generated credentials, tokens, and deployment-specific parameter files stay outside version control.

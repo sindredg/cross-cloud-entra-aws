@@ -148,9 +148,10 @@ The Fargate CPU architecture decision moved to Phase 6, the phase that builds th
 - [ ] Create an idempotent Graph bootstrap path for the synthetic identities; Lifecycle Workflows do not create the source identity.
 - [x] Create baseline security groups and an Entitlement Management catalog.
 - [x] Create a baseline access package with a direct-assignment policy and no approval requirement.
-- [ ] Export the Joiner workflow from Microsoft Graph and store every Lifecycle Workflow definition as a version-controlled JSON payload under `entra/lifecycle-workflows/`.
-- [ ] Add a documented, idempotent deployment path that creates or updates a workflow from its JSON payload.
-- [ ] Create Joiner, Mover, and Leaver workflows with scheduling disabled until their on-demand tests pass.
+- [x] Add a documented, idempotent deployment path that creates or updates a workflow from a version-controlled JSON payload; see `entra/lifecycle-workflows/`.
+- [x] Keep tenant object IDs out of the committed definitions by resolving groups, access packages, and assignment policies from display names at deployment time.
+- [ ] Export the deployed Joiner from Microsoft Graph and reconcile `workflows/joiner.example.json` with the workflow that Phase 2 validated.
+- [ ] Deploy the Mover and Leaver definitions with scheduling disabled until their on-demand tests pass.
 - [x] Configure the Joiner workflow to assign the baseline package automatically before first sign-in.
 - [x] Run the Joiner workflow on demand for one synthetic user.
 - [ ] Verify workflow history, package assignment, direct group membership, and SCIM provisioning without signing in as the test user.
