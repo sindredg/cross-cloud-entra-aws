@@ -20,3 +20,8 @@ jobs:
 
       - name: Scan for secrets
         uses: gitleaks/gitleaks-action@v2
+        env:
+          # gitleaks-action v2 requires a token to enumerate pull request commits.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Findings are reported in the job log; commenting would need pull-requests: write.
+          GITLEAKS_ENABLE_COMMENTS: false
