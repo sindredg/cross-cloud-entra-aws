@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  # gitleaks-action reads the pull request commit list through the API.
+  pull-requests: read
 
 jobs:
   secrets:
