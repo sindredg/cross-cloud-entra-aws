@@ -2,7 +2,7 @@
 
 This project demonstrates cross-cloud workforce identity, authentication protocols, lifecycle governance, and private application access. Microsoft Entra Suite governs synthetic workforce identities and protects container workloads running on Amazon ECS.
 
-> **Status:** Phase 1 complete. Microsoft Entra ID provides SAML authentication and SCIM provisioning to AWS IAM Identity Center. Console and CLI access use temporary SSO credentials. Phase 2 implements the Joiner lifecycle.
+> **Status:** Phase 1 complete; Phases 2 and 3 in progress. Entra ID federates AWS IAM Identity Center over SAML and SCIM. Dynamic groups set membership, a Joiner workflow delivers the baseline access package before first sign-in, and Terraform manages the permission sets and account assignments.
 
 ## Target architecture
 
@@ -158,6 +158,10 @@ Record the installed versions during Phase 0. The workstation CPU architecture a
 - [`decisions.md`](decisions.md): accepted planning and architecture decisions with documented alternatives.
 - [`worklogs/README.md`](worklogs/README.md): worklog naming and entry template.
 - [`worklogs/entra-aws-federation.md`](worklogs/entra-aws-federation.md): Phase 1 implementation and validation.
+- [`worklogs/identity-lifecycle-joiner.md`](worklogs/identity-lifecycle-joiner.md): Phase 2 dynamic groups, Joiner workflow, and baseline access delivery.
+- [`worklogs/terraform-identity-center.md`](worklogs/terraform-identity-center.md): Phase 3 Terraform permission sets and account assignments.
+- [`terraform/`](terraform/): AWS IAM Identity Center permission sets and account assignments.
+- [`entra/groups/`](entra/groups/): Microsoft Graph Bicep for the dynamic security groups.
 - `scripts/check-prereqs.sh`: reports the local toolchain state for Phase 0.
 
 The project uses local Terraform state. State, private variable files, generated credentials, tokens, and deployment-specific parameter files stay outside version control.

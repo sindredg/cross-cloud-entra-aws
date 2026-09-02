@@ -8,8 +8,8 @@ This plan builds the project in small, verifiable phases. Lifecycle Workflows pr
 | --- | --- | --- |
 | 0 | Prerequisites and environment readiness | Ongoing |
 | 1 | Entra federation and IAM Identity Center access | Done |
-| 2 | Identity lifecycle foundation and Joiner | Next |
-| 3 | Terraform AWS foundation and permission sets | Planned |
+| 2 | Identity lifecycle foundation and Joiner | Ongoing |
+| 3 | Terraform AWS foundation and permission sets | Ongoing |
 | 4 | AWS network | Planned |
 | 5 | Shared container platform | Planned |
 | 6 | First ECS service | Planned |
@@ -146,17 +146,17 @@ Stable public host names are a prerequisite, not a later detail. SAML assertion 
 
 ## Phase 2: Identity lifecycle foundation and Joiner
 
-**Status:** Next
+**Status:** Ongoing
 
 - [ ] Define reusable synthetic Joiner, Mover, and Leaver personas with no real personal data.
 - [ ] Include the required lifecycle attributes, such as manager, department, job title, hire date, and leave date.
 - [ ] Create an idempotent Graph bootstrap path for the synthetic identities; Lifecycle Workflows do not create the source identity.
-- [ ] Create baseline security groups and an Entitlement Management catalog.
-- [ ] Create a baseline access package with a direct-assignment policy and no approval requirement.
+- [x] Create baseline security groups and an Entitlement Management catalog.
+- [x] Create a baseline access package with a direct-assignment policy and no approval requirement.
 - [ ] Store Lifecycle Workflow definitions as version-controlled Graph payloads or PowerShell configuration.
 - [ ] Create Joiner, Mover, and Leaver workflows with scheduling disabled until their on-demand tests pass.
-- [ ] Configure the Joiner workflow to assign the baseline package automatically before first sign-in.
-- [ ] Run the Joiner workflow on demand for one synthetic user.
+- [x] Configure the Joiner workflow to assign the baseline package automatically before first sign-in.
+- [x] Run the Joiner workflow on demand for one synthetic user.
 - [ ] Verify workflow history, package assignment, direct group membership, and SCIM provisioning without signing in as the test user.
 - [ ] Record timestamps needed to measure downstream provisioning delay.
 
@@ -164,19 +164,19 @@ Stable public host names are a prerequisite, not a later detail. SAML assertion 
 
 ## Phase 3: Terraform AWS foundation and permission sets
 
-**Status:** Planned
+**Status:** Ongoing
 
-- [ ] Add pinned Terraform and AWS provider versions.
-- [ ] Configure the AWS provider to use the `cross-cloud-admin` SSO profile or ambient temporary credentials.
+- [x] Add pinned Terraform and AWS provider versions.
+- [x] Configure the AWS provider to use the `cross-cloud-admin` SSO profile or ambient temporary credentials.
 - [ ] Add validated variables for region, name prefix, environment, CIDRs, and feature flags.
 - [ ] Derive names, tags, and service maps in `locals.tf`.
-- [ ] Add a placeholder-only `terraform.tfvars.example`.
-- [ ] Keep local state and private tfvars ignored.
-- [ ] Add an architecture-level `identity_center` module for permission sets and group-to-account assignments.
+- [x] Add a placeholder-only `terraform.tfvars.example`.
+- [x] Keep local state and private tfvars ignored.
+- [x] Add an architecture-level `identity_center` module for permission sets and group-to-account assignments.
 - [ ] Import the bootstrap permission set into Terraform or replace it, validate the new access path, and then remove the unmanaged bootstrap resource.
-- [ ] Look up SCIM-provisioned groups by stable display name; do not create users or group memberships with Terraform.
-- [ ] Add compact outputs that do not expose credentials or deployment-specific IDs.
-- [ ] Initialize, format, validate, and review the plan before applying the Identity Center resources.
+- [x] Look up SCIM-provisioned groups by stable display name; do not create users or group memberships with Terraform.
+- [x] Add compact outputs that do not expose credentials or deployment-specific IDs.
+- [x] Initialize, format, validate, and review the plan before applying the Identity Center resources.
 
 **Exit criteria:** Terraform authenticates with temporary credentials, the synthetic Joiner inherits the intended AWS permission set through a SCIM-managed group, and Terraform does not own workforce identities.
 
