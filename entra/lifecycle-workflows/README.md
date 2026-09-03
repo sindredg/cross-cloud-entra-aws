@@ -14,7 +14,7 @@ export.ps1                 Reads a workflow from the tenant into local/.
 common.ps1                 Shared Graph helpers. Dot-sourced, not run directly.
 ```
 
-Nothing in `local/` is ever committed. It holds tenant object IDs and your own display names.
+Nothing in `local/` is ever committed. It holds tenant object IDs and display names.
 
 ## Placeholders
 
@@ -114,9 +114,3 @@ An `attributeChangeTrigger` accepts exactly one attribute. Declaring two returns
 | `leaver.example.json` | leaver | Cancels pending requests, removes all access package assignments, revokes refresh tokens, and disables the account so SCIM deprovisions the AWS user |
 
 The Joiner matches the workflow validated in Phase 2. The deployed Mover currently carries only the token revocation task; its access package swap waits on the elevated package that Phase 7 creates. The Leaver has been deployed but not yet run.
-
-## Safety
-
-- Never commit anything from `local/`.
-- Never commit a resolved definition. Placeholders only.
-- Task arguments are the only place tenant object IDs appear. Execution condition rules reference attributes, not IDs, so they are safe to commit.

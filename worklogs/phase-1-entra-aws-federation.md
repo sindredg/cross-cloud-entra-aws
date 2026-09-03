@@ -61,7 +61,3 @@ The first SSO test failed with `AADSTS50105`. The user authenticated to Entra bu
 ![Entra blocks the sign-in because the user is not assigned to the application](../docs/images/phase-1-14-app-assignment-blocked.png)
 
 Assigning the dynamic group fixed it. Turning off assignment enforcement would also have cleared the error, but that would let every tenant identity reach the AWS application, so the group assignment was the correct fix.
-
-## Next steps
-
-Implement the synthetic Joiner identity, automatic baseline entitlement, and Joiner Lifecycle Workflow.

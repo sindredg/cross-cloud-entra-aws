@@ -54,7 +54,3 @@ Closing this phase exposed Phase 0 items that were never blocking work in progre
 | Fargate CPU architecture decision | Moved to Phase 6, which builds the first image. |
 | CIDR and feature-flag variables | Moved to Phase 4, which introduces the network. |
 | `scripts/check-prereqs.sh` | Reference removed. The script belongs to an unrelated repository and was never committed here. |
-
-## Next steps
-
-Phase 4 has no unmet prerequisite and can start.
