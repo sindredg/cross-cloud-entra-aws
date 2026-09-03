@@ -62,7 +62,3 @@ An `attributeChangeTrigger` accepts exactly one attribute. The definition now tr
 ![The mover workflow is created at version 1](../docs/images/phase-2-24-mover-created.png)
 
 The deployed Mover also carries only the token revocation task. Its access package swap needs a second package that does not exist yet, so those tasks stay in the committed definition and go in when Phase 7 creates the elevated package.
-
-## Next steps
-
-Enable scheduling once the Mover and Leaver have passed on-demand runs. Phase 7 creates the elevated access package and runs the Mover; Phase 11 runs the Leaver and confirms SCIM deprovisioning.

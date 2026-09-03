@@ -65,7 +65,3 @@ The provisioning service created the user and the role groups in AWS, and IAM Id
 The workflow ran cleanly, but the dynamic developer group skipped the user. The rule matched `user.jobTitle -eq "Cloud Engineer"` and the stored value was `Cloud  Engineer` with two spaces. Dynamic membership rules compare strings literally and do not normalize whitespace, and the admin center collapses the extra space when it renders the attribute, so the value looked correct in every view. Correcting the attribute resolved the membership.
 
 Relaxing the rule to `-contains "Cloud Engineer"` would also have worked, but it would match unintended titles such as `Senior Cloud Engineer`, so the attribute was fixed instead of the rule.
-
-## Next steps
-
-Add the Mover and Leaver personas, and record the timestamps needed to measure provisioning delay from workflow completion to the AWS user appearing.
