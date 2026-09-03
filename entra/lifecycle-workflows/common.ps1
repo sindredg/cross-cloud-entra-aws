@@ -223,10 +223,10 @@ function Resolve-PlaceholdersInObject {
     }
 
     if ($InputObject -is [System.Collections.IEnumerable] -and $InputObject -isnot [string]) {
-        return @($InputObject | ForEach-Object { Resolve-PlaceholdersInObject -InputObject $_ })
+        return ,@($InputObject | ForEach-Object { Resolve-PlaceholdersInObject -InputObject $_ })
     }
 
-    if ($InputObject -is [psobject] -and $InputObject.PSObject.Properties.Count -gt 0) {
+    if ($InputObject -is [psobject] -and (@($InputObject.PSObject.Properties).Count -gt 0)) {
         $result = [ordered]@{}
         foreach ($property in $InputObject.PSObject.Properties) {
             $result[$property.Name] = Resolve-PlaceholdersInObject -InputObject $property.Value

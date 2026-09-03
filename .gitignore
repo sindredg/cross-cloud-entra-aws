@@ -74,3 +74,11 @@ Thumbs.db
 .tmp/
 tmp/
 scratch/
+
+# Working plan; not published
+plan.md
+
+# Raw screenshot dump and images awaiting redaction
+iam image dumo/
+docs/images/redaction/*
+!docs/images/redaction/README.md

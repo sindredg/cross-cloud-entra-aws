@@ -1,14 +1,15 @@
 {
   "category": "joiner",
-  "displayName": "Onboard cross-cloud joiner",
-  "description": "Enable the synthetic joiner and deliver baseline access before first sign-in.",
+  "description": "Enable a new worker and assign baseline access.",
+  "displayName": "<JOINER_WORKFLOW_DISPLAY_NAME>",
   "isEnabled": true,
   "isSchedulingEnabled": false,
+  "targetSubjectType": "user",
   "executionConditions": {
     "@odata.type": "#microsoft.graph.identityGovernance.triggerAndScopeBasedConditions",
     "scope": {
       "@odata.type": "#microsoft.graph.identityGovernance.ruleBasedSubjectSet",
-      "rule": "(companyName eq 'CrossCloud Identity Project')"
+      "rule": "(companyName eq '<PROJECT_COMPANY_NAME>')"
     },
     "trigger": {
       "@odata.type": "#microsoft.graph.identityGovernance.timeBasedAttributeTrigger",
@@ -16,29 +17,41 @@
       "offsetInDays": 0
     }
   },
+  "quarantineDetails": {
+    "quarantinedDateTime": null,
+    "quarantineType": "notQuarantined",
+    "quarantineReason": null
+  },
+  "settings": {
+    "quarantineConfiguration": {
+      "matchMode": "any",
+      "conditions": []
+    }
+  },
+  "administrationScopeTargets": [],
   "tasks": [
     {
-      "displayName": "Enable user account",
-      "description": "Enable the joiner account in the directory.",
-      "isEnabled": true,
       "continueOnError": false,
+      "description": "Enable user account in the directory",
+      "displayName": "Enable User Account",
+      "isEnabled": true,
       "taskDefinitionId": "6fc52c9d-398b-4305-9763-15f42c1676fc",
       "arguments": []
     },
     {
-      "displayName": "Request baseline access package assignment",
-      "description": "Assign the baseline access package through its direct-assignment policy.",
-      "isEnabled": true,
       "continueOnError": false,
+      "description": "Request user assignment to selected access package",
+      "displayName": "Request user access package assignment",
+      "isEnabled": true,
       "taskDefinitionId": "c1ec1e76-f374-4375-aaa6-0bb6bd4c60be",
       "arguments": [
         {
-          "name": "accessPackageId",
-          "value": "${accessPackage:AP-Cross-Cloud Baseline}"
+          "name": "assignmentPolicyId",
+          "value": "${accessPackagePolicy:<BASELINE_ACCESS_PACKAGE_DISPLAY_NAME>|<DIRECT_ASSIGNMENT_POLICY_DISPLAY_NAME>}"
         },
         {
-          "name": "assignmentPolicyId",
-          "value": "${accessPackagePolicy:AP-Cross-Cloud Baseline|Direct assignment}"
+          "name": "accessPackageId",
+          "value": "${accessPackage:<BASELINE_ACCESS_PACKAGE_DISPLAY_NAME>}"
         }
       ]
     }

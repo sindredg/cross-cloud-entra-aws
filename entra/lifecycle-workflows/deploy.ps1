@@ -48,11 +48,11 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'common.ps1')
 
-if (-not $Path) { $Path = Join-Path $PSScriptRoot 'workflows' }
+if (-not $Path) { $Path = Join-Path $PSScriptRoot 'local' }
 if (-not (Test-Path $Path)) { throw "Path not found: $Path" }
 
 $definitionFiles = if (Test-Path $Path -PathType Container) {
-    Get-ChildItem -Path $Path -Filter '*.example.json' | Sort-Object Name
+    Get-ChildItem -Path $Path -Filter '*.json' | Sort-Object Name
 }
 else {
     Get-Item -Path $Path
@@ -68,7 +68,12 @@ foreach ($file in $definitionFiles) {
     Write-Host ""
     Write-Host "== $($file.Name)"
 
-    $definition = Get-Content -Path $file.FullName -Raw | ConvertFrom-Json
+    $rawDefinition = Get-Content -Path $file.FullName -Raw
+    if ($rawDefinition -match '<[A-Z][A-Z0-9_]*>') {
+        throw "$($file.Name) contains example values. Copy it to local/ and replace every <PLACEHOLDER> before deployment."
+    }
+
+    $definition = $rawDefinition | ConvertFrom-Json
 
     foreach ($required in @('category', 'displayName', 'tasks')) {
         if (-not $definition.PSObject.Properties.Name.Contains($required)) {
