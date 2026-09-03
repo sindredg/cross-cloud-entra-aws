@@ -1,6 +1,6 @@
 {
   "category": "leaver",
-  "displayName": "Offboard cross-cloud leaver",
+  "displayName": "<LEAVER_WORKFLOW_DISPLAY_NAME>",
   "description": "Remove entitlements, revoke sessions, and disable the account so SCIM deprovisions AWS access.",
   "isEnabled": true,
   "isSchedulingEnabled": false,
@@ -8,7 +8,7 @@
     "@odata.type": "#microsoft.graph.identityGovernance.triggerAndScopeBasedConditions",
     "scope": {
       "@odata.type": "#microsoft.graph.identityGovernance.ruleBasedSubjectSet",
-      "rule": "(companyName eq 'CrossCloud Identity Project')"
+      "rule": "(companyName eq '<PROJECT_COMPANY_NAME>')"
     },
     "trigger": {
       "@odata.type": "#microsoft.graph.identityGovernance.timeBasedAttributeTrigger",

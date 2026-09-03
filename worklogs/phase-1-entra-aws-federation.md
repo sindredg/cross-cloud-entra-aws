@@ -4,51 +4,63 @@
 
 ## Goal
 
-Use Microsoft Entra ID as the workforce identity source for AWS IAM Identity Center.
+Make Microsoft Entra ID the workforce identity source for AWS IAM Identity Center.
 
 ## Implementation
 
-1. Added the AWS IAM Identity Center gallery application and configured SAML. The Name ID uses the email-address format with `user.userprincipalname` as its source.
+Switched the IAM Identity Center identity source to an external provider.
 
-   ![SAML Name ID claim mapped to the Entra user principal name](../docs/images/phase-1-01-saml-nameid-claim.png)
+![IAM Identity Center identity source set to an external identity provider](../docs/images/phase-1-01-identity-source-external-idp.png)
 
-2. Imported the Entra federation metadata into AWS and changed the IAM Identity Center identity source to the external IdP.
+Added the AWS IAM Identity Center gallery application and set the Name ID to the email-address format, sourced from `user.userprincipalname`. IAM Identity Center matches the SCIM `userName` against this value, so a mismatch here breaks sign-in after provisioning succeeds.
 
-   ![AWS confirms that the external identity provider is active](../docs/images/phase-1-02-saml-trust-established.png)
+![SAML Name ID claim mapped to the Entra user principal name](../docs/images/phase-1-02-saml-nameid-claim.png)
 
-3. Enabled SCIM provisioning and verified the connection from Entra. The endpoint and token were not retained in the repository.
+Exchanged metadata in both directions: the AWS service provider metadata into Entra, the Entra federation metadata into AWS.
 
-   ![Entra confirms a successful SCIM connection to AWS IAM Identity Center](../docs/images/phase-1-03-scim-connection.png)
+![AWS confirms that the external identity provider is active](../docs/images/phase-1-03-saml-trust-established.png)
 
-4. Deployed the `AWS-Administrators` security group through Microsoft Graph Bicep. Membership requires an enabled member account with department `Cloud Platform` and job title `Cloud Administrator`.
+Enabled automatic provisioning in AWS. The endpoint and token are shown once and were not retained in the repository.
 
-   ![Dynamic membership conditions for the AWS administrators group](../docs/images/phase-1-04-dynamic-admin-rule.png)
+![AWS issues the SCIM endpoint and a one-time access token](../docs/images/phase-1-04-scim-endpoint-and-token.png)
 
-5. Assigned the dynamic group to the enterprise application and scoped provisioning to assigned identities.
+![Entra confirms a successful SCIM connection to AWS IAM Identity Center](../docs/images/phase-1-05-scim-connection.png)
 
-   ![AWS administrators group assigned to the enterprise application](../docs/images/phase-1-05-enterprise-app-assignment.png)
+Deployed the `AWS-Administrators` security group through Microsoft Graph Bicep. Membership requires an enabled member account with department `Cloud Platform` and job title `Cloud Administrator`.
 
-6. Provisioned the group and its member to AWS. Created the `CrossCloud-Administrators` permission set with `AdministratorAccess` and a one-hour session.
+![az deployment group create applies the Graph Bicep group template](../docs/images/phase-1-06-bicep-group-deploy.png)
 
-   ![AWS administrator permission set configuration](../docs/images/phase-1-06-permission-set.png)
+![Dynamic membership conditions for the AWS administrators group](../docs/images/phase-1-07-dynamic-admin-rule.png)
 
-7. Assigned the group and permission set to the AWS account, then verified Entra-authenticated access through the AWS access portal.
+Assigned the group to the enterprise application and scoped provisioning to assigned identities only.
 
-8. Configured the `cross-cloud-admin` AWS CLI SSO profile and completed browser authorization for temporary credentials.
-
-   ![AWS confirms successful CLI SSO authorization](../docs/images/phase-1-07-cli-sso-success.png)
+![AWS administrators group assigned to the enterprise application](../docs/images/phase-1-08-enterprise-app-assignment.png)
 
 ## Validation
 
-- SAML trust was accepted by AWS IAM Identity Center.
-- SCIM created the assigned group and member in AWS.
-- The dynamic membership rule selected the expected member account.
-- The AWS access portal displayed the assigned account after Entra authentication.
-- AWS CLI SSO authorization completed successfully.
+The provisioning service created the group and its member in AWS, and IAM Identity Center reports both as SCIM-owned.
+
+![Provisioning log showing the group and user created in AWSSingleSignon](../docs/images/phase-1-09-scim-provisioning-log.png)
+
+![IAM Identity Center lists the user with source SCIM](../docs/images/phase-1-10-identity-center-users-scim.png)
+
+Created the `CrossCloud-Administrators` permission set with `AdministratorAccess` and a one-hour session, then assigned it to the group on the project account. Phase 3 replaced this permission set with a Terraform-managed one.
+
+![AWS administrator permission set configuration](../docs/images/phase-1-11-permission-set.png)
+
+The access portal shows the assigned account after Entra authentication, and `aws sso login` completes browser authorization for the `cross-cloud-admin` profile.
+
+![AWS access portal listing the assigned account after Entra authentication](../docs/images/phase-1-12-access-portal-account.png)
+
+![AWS confirms successful CLI SSO authorization](../docs/images/phase-1-13-cli-sso-success.png)
 
 ## Troubleshooting
 
-The initial SSO test was blocked because the user was not assigned to the enterprise application. Assigning the dynamic group resolved the failure while keeping assignment enforcement enabled.
+The first SSO test failed with `AADSTS50105`. The user authenticated to Entra but was not assigned to the enterprise application, and the application blocks unassigned users by default.
+
+![Entra blocks the sign-in because the user is not assigned to the application](../docs/images/phase-1-14-app-assignment-blocked.png)
+
+Assigning the dynamic group fixed it. Turning off assignment enforcement would also have cleared the error, but that would let every tenant identity reach the AWS application, so the group assignment was the correct fix.
 
 ## Next steps
 

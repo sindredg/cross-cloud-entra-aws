@@ -282,7 +282,7 @@ A portfolio project should demonstrate informed risk decisions as well as secure
 
 ### Decision
 
-Do not create an AWS Budget, billing alert, or cost anomaly detector for this project. Control cost with the per-phase rule already in `plan.md`: review recurring cost before applying any resource that bills while idle, and destroy billable resources during Phase 11. This decision applies the ADR-014 framework.
+Do not create an AWS Budget, billing alert, or cost anomaly detector for this project. Control cost with the per-phase rule: review recurring cost before applying any resource that bills while idle, and destroy billable resources during Phase 11. This decision applies the ADR-014 framework.
 
 - **Threat:** Unnoticed spend from a resource that bills while idle, such as a NAT gateway, an Application Load Balancer, or the connector EC2 host.
 - **Risk reduction from a budget:** Low. A budget alert is retrospective. It reports spend that already happened, often a day late, and does not prevent the resource from being created.

@@ -1,6 +1,6 @@
 {
   "category": "mover",
-  "displayName": "Move cross-cloud worker to a new role",
+  "displayName": "<MOVER_WORKFLOW_DISPLAY_NAME>",
   "description": "Swap entitlements when the job title or department of a project identity changes.",
   "isEnabled": true,
   "isSchedulingEnabled": false,
@@ -8,16 +8,13 @@
     "@odata.type": "#microsoft.graph.identityGovernance.triggerAndScopeBasedConditions",
     "scope": {
       "@odata.type": "#microsoft.graph.identityGovernance.ruleBasedSubjectSet",
-      "rule": "(companyName eq 'CrossCloud Identity Project')"
+      "rule": "(companyName eq '<PROJECT_COMPANY_NAME>')"
     },
     "trigger": {
       "@odata.type": "#microsoft.graph.identityGovernance.attributeChangeTrigger",
       "triggerAttributes": [
         {
           "name": "jobTitle"
-        },
-        {
-          "name": "department"
         }
       ]
     }
@@ -32,7 +29,7 @@
       "arguments": [
         {
           "name": "accessPackageId",
-          "value": "${accessPackage:AP-Cross-Cloud Baseline}"
+          "value": "${accessPackage:<CURRENT_ACCESS_PACKAGE_DISPLAY_NAME>}"
         }
       ]
     },
@@ -45,11 +42,11 @@
       "arguments": [
         {
           "name": "accessPackageId",
-          "value": "${accessPackage:AP-Cross-Cloud Elevated}"
+          "value": "${accessPackage:<TARGET_ACCESS_PACKAGE_DISPLAY_NAME>}"
         },
         {
           "name": "assignmentPolicyId",
-          "value": "${accessPackagePolicy:AP-Cross-Cloud Elevated|Direct assignment}"
+          "value": "${accessPackagePolicy:<TARGET_ACCESS_PACKAGE_DISPLAY_NAME>|<DIRECT_ASSIGNMENT_POLICY_DISPLAY_NAME>}"
         }
       ]
     },

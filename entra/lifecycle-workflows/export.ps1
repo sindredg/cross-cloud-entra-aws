@@ -118,14 +118,7 @@ if ($Templatize) {
 }
 
 if (-not $OutFile) {
-    $OutFile = if ($Templatize) {
-        Join-Path $PSScriptRoot "workflows/$($workflow.category).example.json"
-    }
-    else {
-        # Untemplatized exports hold tenant object IDs. They go to local/, which
-        # is ignored by Git and never read by deploy.ps1.
-        Join-Path $PSScriptRoot "local/$($workflow.category).json"
-    }
+    $OutFile = Join-Path $PSScriptRoot "local/$($workflow.category).json"
 }
 
 $directory = Split-Path -Parent $OutFile

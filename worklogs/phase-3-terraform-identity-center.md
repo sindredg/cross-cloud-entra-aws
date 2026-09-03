@@ -4,34 +4,45 @@
 
 ## Goal
 
-Manage IAM Identity Center permission sets and their account assignments with Terraform, while SCIM keeps ownership of the groups and their members.
+Put IAM Identity Center permission sets and their account assignments under Terraform, while SCIM keeps ownership of the groups and their members.
 
 ## Implementation
 
-1. Added the root Terraform configuration with pinned versions (`terraform ~> 1.15.0`, `aws ~> 6.60.0`), validated variables for region, name prefix, and environment, and a provider that uses the `cross-cloud-admin` SSO profile.
+Added the root configuration with pinned versions (`terraform ~> 1.15.0`, `aws ~> 6.60.0`), validated variables for region, name prefix, and environment, and a provider that uses the `cross-cloud-admin` SSO profile.
 
-2. Added an `identity_center` module that creates one permission set per role, attaches an AWS managed policy to each, looks up the SCIM-provisioned group by display name, and assigns the group and permission set to the current account.
+An `identity_center` module creates one permission set per role, attaches an AWS managed policy to each, looks the SCIM-provisioned group up by display name, and assigns the pair to the current account:
 
-3. Configured three roles: `crosscloud-Administrator` (`AdministratorAccess`, one-hour session), `crosscloud-Developer` (`PowerUserAccess`, four-hour session), and `crosscloud-Auditor` (`SecurityAudit`, four-hour session).
+| Permission set | Policy | Session |
+| --- | --- | --- |
+| `crosscloud-Administrator` | `AdministratorAccess` | 1 hour |
+| `crosscloud-Developer` | `PowerUserAccess` | 4 hours |
+| `crosscloud-Auditor` | `SecurityAudit` | 4 hours |
 
-4. Ran `terraform apply` with temporary SSO credentials.
+The group lookup is a data source, never a resource. Terraform reads the groups SCIM created and never writes to them.
 
-   ![Terraform apply creates the permission sets and reports the assigned groups](../docs/images/phase-3-01-terraform-apply.png)
-
-5. Confirmed the group-to-permission-set assignments in the AWS console.
-
-   ![IAM Identity Center account assignments for the three role groups](../docs/images/phase-3-02-group-permission-assignments.png)
+![terraform plan: 9 to add, 0 to change, 0 to destroy](../docs/images/phase-3-01-terraform-plan.png)
 
 ## Validation
 
-- `terraform apply` added nine resources with no changes or deletions.
-- The `assigned_group_names` and `permission_set_names` outputs list the three roles.
-- The AWS account shows `AWS-Administrators`, `AWS-Developers`, and `AWS-Auditors` mapped to their permission sets.
-- The group lookups resolved without Terraform creating or mutating any user or group membership.
+![terraform apply completes with 9 resources added and the role outputs populated](../docs/images/phase-3-02-terraform-apply.png)
+
+The account shows the three permission sets and the three groups mapped to them.
+
+![Permission sets accessing the project account](../docs/images/phase-3-03-permission-sets-in-account.png)
+
+![IAM Identity Center account assignments for the three role groups](../docs/images/phase-3-04-group-permission-assignments.png)
+
+## Troubleshooting
+
+Removing the Phase 1 bootstrap permission set failed while it was still provisioned to the account.
+
+![AWS refuses to delete a permission set that is still provisioned to an account](../docs/images/phase-3-05-bootstrap-removal-blocked.png)
+
+Order matters: remove the permission set's access from the account first, then delete the permission set. The new Terraform-managed administrator path was validated before either step, so the account was never without an administrative route.
 
 ## Plan reconciliation
 
-Closing Phase 3 exposed Phase 0 items that were never blocking work in progress. The plan now records each one where it is actually needed:
+Closing this phase exposed Phase 0 items that were never blocking work in progress. Each one now sits where it is actually needed:
 
 | Item | Outcome |
 | --- | --- |
@@ -44,8 +55,6 @@ Closing Phase 3 exposed Phase 0 items that were never blocking work in progress.
 | CIDR and feature-flag variables | Moved to Phase 4, which introduces the network. |
 | `scripts/check-prereqs.sh` | Reference removed. The script belongs to an unrelated repository and was never committed here. |
 
-Worklog filenames now carry the phase number so the directory sorts in plan order.
-
 ## Next steps
 
-Phase 4 has no unmet prerequisite and can start. Before it does, Phase 2 still needs the Lifecycle Workflow definitions exported to version-controlled JSON, the Mover and Leaver workflows created with scheduling disabled, and SCIM provisioning of the Joiner verified in IAM Identity Center.
+Phase 4 has no unmet prerequisite and can start.

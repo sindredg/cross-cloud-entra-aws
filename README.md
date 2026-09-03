@@ -1,10 +1,8 @@
 # Cross-Cloud Identity with Microsoft Entra Suite and AWS
 
-This project demonstrates cross-cloud workforce identity, authentication protocols, lifecycle governance, and private application access. Microsoft Entra Suite governs synthetic workforce identities and protects container workloads running on Amazon ECS.
+Microsoft Entra Suite governs synthetic workforce identities and the AWS access they receive. A Joiner is created, given baseline entitlements before first sign-in, provisioned into AWS IAM Identity Center over SCIM, and later moved and deprovisioned, with every step reproducible from this repository.
 
-> **Status:** Phase 1 complete; Phases 2 and 3 in progress. Entra ID federates AWS IAM Identity Center over SAML and SCIM. Dynamic groups set membership, a Joiner workflow delivers the baseline access package before first sign-in, and Terraform manages the permission sets and account assignments.
-
-## Target architecture
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -68,101 +66,26 @@ flowchart LR
     Platform -.-> PrivateWeb
 ```
 
-## Tool boundaries
+Terraform never creates or mutates a workforce identity. SCIM owns the IAM Identity Center users and group memberships; Terraform looks those groups up by display name and owns only the permission sets and account assignments.
 
-| Area | Tool | Responsibility |
+## Done
+
+| Phase | Outcome | Evidence |
 | --- | --- | --- |
-| AWS infrastructure | Terraform | IAM Identity Center permission sets and assignments, VPC, load balancers, ECS, ECR, IAM roles, logs, secret containers, and the connector EC2 host |
-| AWS workforce identities | Entra provisioning service and SCIM | Users and direct group memberships in the IAM Identity Center identity store |
-| Entra applications | Microsoft Graph Bicep | Applications, service principals, scopes, roles, redirects, and supported assignments |
-| Entra governance | Microsoft Graph and PowerShell | Synthetic identities, access packages, Lifecycle Workflows, Private Access, Conditional Access, protection, and unsupported Bicep resources |
-| Applications | Containers on ECS Fargate | Protocol demonstrations and safe request/token inspection |
-| Interactive work | AWS and Entra portals | Bootstrap access, initial federation and SCIM secrets, consent, connector enrollment, and validation where automation is unsuitable |
+| 1 | Entra ID is the external SAML identity provider for IAM Identity Center. SCIM provisions the dynamic administrator group and its member. Federated console and CLI access work with temporary credentials. | [worklog](worklogs/phase-1-entra-aws-federation.md) |
+| 2 | Four attribute-driven security groups deploy through Graph Bicep. A synthetic Joiner receives the baseline access package before first sign-in and reaches IAM Identity Center over SCIM. | [worklog](worklogs/phase-2-identity-lifecycle-joiner.md) |
+| 2 | Joiner, Mover, and Leaver workflows deploy from version-controlled Graph JSON with no tenant object IDs committed. | [worklog](worklogs/phase-2-lifecycle-workflows-as-code.md) |
+| 3 | Terraform owns three permission sets and their account assignments. The unmanaged bootstrap permission set is gone. | [worklog](worklogs/phase-3-terraform-identity-center.md) |
 
-## Goals
+## Upcoming
 
-- Use SAML, OIDC, and OAuth 2.0 through working applications.
-- Implement Joiner, Mover, and Leaver (JML) controls throughout the project.
-- Assign baseline access automatically before a test user's first sign-in.
-- Federate Microsoft Entra ID with AWS IAM Identity Center and provision users and groups through SCIM.
-- Inspect protocol requests, responses, claims, and authorization decisions without logging raw credentials.
-- Run application containers on Amazon ECS with AWS Fargate.
-- Protect a private ECS application with Microsoft Entra Private Access.
-- Add governance, risk, and verification scenarios from Microsoft Entra Suite.
-- Keep the repository reusable and free of tenant IDs, account IDs, credentials, and secret values.
-
-## Prerequisites
-
-### AWS account and access
-
-- An existing administrative sign-in that remains available until federated access is tested.
-- Permission to enable IAM Identity Center, configure the identity source, create permission sets, manage the project resources, and configure AWS Budgets.
-- AWS Organizations management-account access only if the optional service control policy revocation scenario is implemented.
-
-### Microsoft cloud
-
-- A Microsoft Entra tenant with a Microsoft Entra Suite trial or equivalent individual licenses assigned to the in-scope test users.
-- A dedicated administrative identity protected by MFA.
-- Least-privileged roles for the implemented phases, including Lifecycle Workflows Administrator, Identity Governance Administrator, Application Administrator, Conditional Access Administrator, and Global Secure Access Administrator where required.
-- An Azure subscription for Microsoft Graph Bicep deployments and the optional Lifecycle Workflows custom task extension.
-- A Windows 11 test device for the Global Secure Access client and Private Access validation.
-- A recorded trial start and expiry date, so licence-dependent phases run before the trial lapses.
-
-### DNS and certificates
-
-- A DNS domain for the public application host names, either registered in Route 53 or delegated from an external registrar.
-- Host names reserved for `saml-web`, `oidc-web`, `oauth-api`, and `private-web`.
-- An AWS Certificate Manager public certificate validated through DNS.
-
-These are prerequisites rather than later details. SAML assertion consumer service URLs, OIDC redirect URIs, and the HTTPS load-balancer listener all depend on names that must not change after the Entra applications are registered.
-
-### Local workstation
-
-- Git
-- Terraform; Phase 3 pins the version when the AWS configuration is created
-- AWS CLI v2
-- Docker with BuildKit, reachable from the working shell
-- Azure CLI and Bicep
-- PowerShell 7 and the required Microsoft Graph modules
-- `jq`
-
-Record the installed versions during Phase 0. The workstation CPU architecture also determines whether container images are built natively for the chosen Fargate CPU architecture or cross-built, so decide that before the first image is built.
-
-## AWS bootstrap sequence
-
-1. Enable IAM Identity Center and configure Microsoft Entra ID as its external identity provider.
-2. Configure SCIM and provision the administrative Entra group.
-3. Assign a short-session bootstrap permission set. Phase 3 replaced it, so Terraform is now authoritative for every permission set.
-4. Configure the `cross-cloud-admin` AWS CLI SSO profile and verify console and CLI access.
-5. Retain the previous administrative path until the federated path has been tested.
-
-## AWS access baseline
-
-- Federate IAM Identity Center with Microsoft Entra ID for console and CLI access.
-- Use temporary credentials from the `cross-cloud-admin` SSO profile for Terraform.
-- Keep the existing administrative path until federated console and CLI access are tested.
-- Let SCIM own IAM Identity Center users and group memberships; Terraform must not mutate them.
-- Do not paste account IDs, role ARNs, credentials, or CLI output into committed files or worklogs.
-
-## Working method
-
-1. Work on one phase from [`plan.md`](plan.md).
-2. Stop if access, cost, security, or Terraform output is unclear.
-3. Validate the phase against its exit criteria.
-4. Write a redacted worklog entry.
-5. Mark the phase `Done` only after validation succeeds.
-
-## Documentation
-
-- [`plan.md`](plan.md): ordered implementation phases and completion criteria.
-- [`decisions.md`](decisions.md): accepted planning and architecture decisions with documented alternatives.
-- [`worklogs/README.md`](worklogs/README.md): worklog naming and entry template.
-- [`worklogs/phase-0-readiness.md`](worklogs/phase-0-readiness.md): Phase 0 toolchain and repository readiness.
-- [`worklogs/phase-1-entra-aws-federation.md`](worklogs/phase-1-entra-aws-federation.md): Phase 1 SAML federation, SCIM provisioning, and first federated access.
-- [`worklogs/phase-2-identity-lifecycle-joiner.md`](worklogs/phase-2-identity-lifecycle-joiner.md): Phase 2 dynamic groups, Joiner workflow, and baseline access delivery.
-- [`worklogs/phase-3-terraform-identity-center.md`](worklogs/phase-3-terraform-identity-center.md): Phase 3 Terraform permission sets and account assignments.
-- [`terraform/`](terraform/): AWS IAM Identity Center permission sets and account assignments.
-- [`entra/groups/`](entra/groups/): Microsoft Graph Bicep for the dynamic security groups.
-- [`entra/lifecycle-workflows/`](entra/lifecycle-workflows/): Joiner, Mover, and Leaver definitions as Graph JSON, with export and deploy scripts.
-
-The project uses local Terraform state. State, private variable files, generated credentials, tokens, and deployment-specific parameter files stay outside version control.
+| Phase | Scope |
+| --- | --- |
+| 4 | VPC across two Availability Zones, public and private subnets, and a reviewed egress design |
+| 5 | ECS cluster, ECR repositories, log groups, task roles, and empty secret containers |
+| 6 | First Fargate service in private subnets, with health checks and rollback |
+| 7 | Public `saml-web`, `oidc-web`, and `oauth-api` behind HTTPS, plus the Mover run that swaps entitlements and claims |
+| 8 | Private `private-web` behind an internal load balancer with no public route |
+| 9 | Entra Private Access connector on a Windows Server EC2 host, publishing `private-web` per app |
+| 10 | Conditional Access, access reviews, ID Protection, and Verified ID scenarios |
+| 11 | Leaver run, end-to-end JML trace, CI checks, and teardown |
