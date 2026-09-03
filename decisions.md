@@ -1,14 +1,8 @@
 # Cross-Cloud Identity with Microsoft Entra Suite and AWS planning decisions
 
-This file records accepted project decisions during the planning phase. Add new decisions at the end. If a decision changes, mark the original `Superseded` and link to the replacement instead of deleting history.
+Record decisions as Decision, Why, and Alternatives with documentation links. Keep superseded entries as history, not current implementation requirements.
 
-Each decision uses this structure:
-
-- Title
-- Status and date
-- Decision
-- Why
-- Alternatives with documentation links
+Current scope: [lifecycle and Private Access](#adr-016-focus-on-lifecycle-and-private-access), a [minimal costed footprint](#adr-017-size-infrastructure-for-one-private-target), and [time-boxed cost control](#adr-018-budget-test-windows-without-cloud-credits). Existing federation, SCIM, and permission sets remain in use.
 
 ## ADR-001: Build the project in verified phases
 
@@ -30,7 +24,7 @@ The project combines unfamiliar AWS access controls, billable networking, Terraf
 
 ## ADR-002: Use AWS ECS with Fargate for application containers
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-017](#adr-017-size-infrastructure-for-one-private-target)
 **Date:** 2026-09-01
 
 ### Decision
@@ -49,7 +43,7 @@ Fargate removes application-host VM management while retaining private VPC netwo
 
 ## ADR-003: Keep one VM for the Entra Private Access connector
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-017](#adr-017-size-infrastructure-for-one-private-target)
 **Date:** 2026-09-01
 
 ### Decision
@@ -124,7 +118,7 @@ This is a single-user learning project rather than a shared infrastructure envir
 
 ## ADR-007: Use architecture-level Terraform modules
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-017](#adr-017-size-infrastructure-for-one-private-target)
 **Date:** 2026-09-01
 
 ### Decision
@@ -143,7 +137,7 @@ This structure provides reuse without hiding the architecture behind one-resourc
 
 ## ADR-008: Inspect tokens without persisting credentials
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-016](#adr-016-focus-on-lifecycle-and-private-access)
 **Date:** 2026-09-01
 
 ### Decision
@@ -183,6 +177,8 @@ The title communicates the platforms and the project's identity focus to a portf
 **Status:** Accepted
 **Date:** 2026-09-01
 
+Validation scope is narrowed by [ADR-016](#adr-016-focus-on-lifecycle-and-private-access): AWS and private-access entitlements replace custom protocol-application roles.
+
 ### Decision
 
 Create synthetic identities early and carry them through Joiner, Mover, and Leaver scenarios as the platform is built. The Joiner workflow automatically assigns a baseline access package through a direct-assignment policy before first sign-in. The test user does not submit a request or complete an approval. Run Mover validation when application roles and AWS access are available, and run Leaver validation during final testing.
@@ -219,7 +215,7 @@ This design provides one workforce identity lifecycle across Entra and AWS, enab
 
 ## ADR-012: Treat prerequisites as Phase 0
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-017](#adr-017-size-infrastructure-for-one-private-target)
 **Date:** 2026-09-01
 
 ### Decision
@@ -277,7 +273,7 @@ A portfolio project should demonstrate informed risk decisions as well as secure
 
 ## ADR-015: Control cost by phase review instead of an AWS Budget
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-018](#adr-018-budget-test-windows-without-cloud-credits)
 **Date:** 2026-09-02
 
 ### Decision
@@ -300,3 +296,67 @@ The project is a short-lived, single-account portfolio build where every billabl
 - Create an AWS Budget with an email alert. Rejected as retrospective for a project whose spend is already gated by a reviewed `terraform plan`. See [Managing your costs with AWS Budgets](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html).
 - Enable AWS Cost Anomaly Detection. Rejected because anomaly detection needs a spend baseline that a short project never establishes. See [AWS Cost Anomaly Detection](https://docs.aws.amazon.com/cost-management/latest/userguide/manage-ad.html).
 - Track nothing and check the console occasionally. Rejected because it leaves no written rule, which ADR-014 requires for a removed control.
+
+## ADR-016: Focus on lifecycle and Private Access
+
+**Status:** Accepted
+**Date:** 2026-09-04
+
+### Decision
+
+Demonstrate Joiner, Mover, and Leaver automation across Entra, AWS IAM Identity Center, and one Private Access destination. Retain the existing SAML federation and SCIM integration as supporting infrastructure. Remove the planned `saml-web`, `oidc-web`, `oauth-api`, protocol inspectors, and standalone Conditional Access showcase.
+
+Keep MFA, existing Conditional Access policies, credential hygiene, and private network boundaries. Policy changes required for Private Access remain in scope. ID Protection, Verified ID, and custom Logic App extensions are not required. Completed work remains evidence; only future phases are resequenced.
+
+### Why
+
+Federation is already demonstrated here; OIDC, OAuth, and Conditional Access have been covered in other projects. Lifecycle outcomes and private application access add distinct evidence without maintaining duplicate applications.
+
+### Alternatives
+
+- Keep the protocol-comparison platform. Rejected as duplicate scope with additional compute and networking.
+- Show lifecycle tasks without a resource-access outcome. Rejected: [Lifecycle Workflows](https://learn.microsoft.com/en-us/entra/id-governance/what-are-lifecycle-workflows) and [per-app Private Access](https://learn.microsoft.com/en-us/entra/global-secure-access/how-to-configure-per-app-access) together make provisioning, access change, and removal observable.
+
+## ADR-017: Size infrastructure for one private target
+
+**Status:** Accepted
+**Date:** 2026-09-04
+
+### Decision
+
+Plan one private AWS application and one supported Windows Server connector. Select EC2 or Fargate for the application only after a total-cost comparison. The initial test footprint need not provide high availability; record that limitation rather than presenting it as production-ready.
+
+Do not mandate a shared ECS platform, public ALB, internal ALB, two-AZ deployment, purchased domain, or NAT gateway. Approve the necessary outbound connectivity, private destination addressing, transport, and no-public-inbound management path before deployment. AWS service endpoints are not a replacement for connector connectivity to Microsoft.
+
+Keep architecture-level modules where justified, inputs in private configuration, and derived values in locals. No one-resource wrapper modules are required. Confirm licence and client/connector prerequisites before starting paid hosts. This replaces the fixed topology and prerequisite assumptions in ADR-002, ADR-003, ADR-007, and ADR-012.
+
+### Why
+
+The target exists to prove governed private reachability, not container-platform breadth. Networking and Windows hosting can dominate a small demonstration's cost.
+
+### Alternatives
+
+- Preserve the full [Fargate platform](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html). Deferred unless the complete estimate justifies it for one target.
+- Put the application on a public endpoint. Rejected because it defeats the private-access boundary.
+- Run the connector in a Linux container. Rejected: use a supported host per [Microsoft connector setup](https://learn.microsoft.com/en-us/entra/global-secure-access/tutorial-private-access-connector-setup).
+
+## ADR-018: Budget test windows without cloud credits
+
+**Status:** Accepted
+**Date:** 2026-09-04
+
+### Decision
+
+Assume no promotional credits. Before each billable deployment, approve an itemized estimate, spend limit, test duration, and teardown procedure. Include compute, EBS, public IPv4 if used, egress, endpoints, logs, data transfer, and licences. Do not provision while these choices are unresolved.
+
+Check actual spend after each test window and remove temporary billable resources immediately afterward. Retain only explicitly approved resources. A reviewed Terraform plan is not a cost estimate or a spending cap. Budget notifications can supplement these checks, but are not a hard stop. ADR-015's final-phase-only teardown rule no longer applies.
+
+### Why
+
+Without credits, idle infrastructure has a direct cost. Short test windows preserve the identity evidence without funding an always-on platform.
+
+### Alternatives
+
+- Keep everything until final publication. Rejected because idle charges continue between phases; see [VPC pricing](https://aws.amazon.com/vpc/pricing/).
+- Stop EC2 and assume billing has ended. Rejected because [EBS storage still incurs charges](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/how-ec2-instance-stop-start-works.html).
+- Rely only on [AWS Budgets](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html). Insufficient as an enforcement mechanism; use estimates, time limits, spend checks, and teardown together.
