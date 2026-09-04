@@ -2,3 +2,7 @@ aws_region  = "eu-north-1"
 aws_profile = "cross-cloud-admin"
 name_prefix = "crosscloud"
 environment = "project"
+
+# Phase 5/6 test footprint. Leave false outside an agreed test window.
+enable_private_access = false
+connector_key_name    = null
