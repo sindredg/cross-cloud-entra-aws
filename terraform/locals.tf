@@ -37,3 +37,12 @@ locals {
     }
   }
 }
+
+# Single-AZ test footprint for Phase 5 and Phase 6. One routed subnet for the connector, one isolated subnet for the private target. See ADR-019.
+locals {
+  private_access_network = {
+    vpc_cidr              = "10.20.0.0/16"
+    connector_subnet_cidr = "10.20.0.0/24"
+    target_subnet_cidr    = "10.20.1.0/24"
+  }
+}

@@ -2,7 +2,7 @@
 
 Record decisions as Decision, Why, and Alternatives with documentation links. Keep superseded entries as history, not current implementation requirements.
 
-Current scope: [lifecycle and Private Access](#adr-016-focus-on-lifecycle-and-private-access), a [minimal costed footprint](#adr-017-size-infrastructure-for-one-private-target), and [time-boxed cost control](#adr-018-budget-test-windows-without-cloud-credits). Existing federation, SCIM, and permission sets remain in use.
+Current scope: [lifecycle and Private Access](#adr-016-focus-on-lifecycle-and-private-access), a [minimal footprint for one private target](#adr-017-size-infrastructure-for-one-private-target), and [Grafana as that target](#adr-020-reuse-grafana-from-the-iam-lab-as-the-private-target-without-its-access-layers). Existing federation, SCIM, and permission sets remain in use.
 
 ## ADR-001: Build the project in verified phases
 
@@ -271,32 +271,6 @@ A portfolio project should demonstrate informed risk decisions as well as secure
 - Remove any control that slows implementation. Rejected because efficiency alone does not justify accepting credential exposure, account lockout, public management access, or irreversible changes.
 - Make undocumented exceptions. Rejected because later readers could not distinguish a conscious risk decision from an omission. Use the decision log and the [AWS Well-Architected Cost Optimization Pillar](https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/welcome.html) to record the tradeoff.
 
-## ADR-015: Control cost by phase review instead of an AWS Budget
-
-**Status:** Superseded by [ADR-018](#adr-018-budget-test-windows-without-cloud-credits)
-**Date:** 2026-09-02
-
-### Decision
-
-Do not create an AWS Budget, billing alert, or cost anomaly detector for this project. Control cost with the per-phase rule: review recurring cost before applying any resource that bills while idle, and destroy billable resources during Phase 11. This decision applies the ADR-014 framework.
-
-- **Threat:** Unnoticed spend from a resource that bills while idle, such as a NAT gateway, an Application Load Balancer, or the connector EC2 host.
-- **Risk reduction from a budget:** Low. A budget alert is retrospective. It reports spend that already happened, often a day late, and does not prevent the resource from being created.
-- **Cost and friction:** Setup is cheap, but the alert needs a verified notification path and adds a control that no phase exercises.
-- **Effect on learning objectives:** None. Cost alerting is not part of the identity scenario the project demonstrates.
-- **Compensating controls:** Every billable resource is introduced by a reviewed `terraform plan` in a single account. The phase checklists name each idle-billing resource before it is created. Phase 11 destroys them.
-- **Rollback:** Create a budget in the Billing console at any time. No project resource depends on its absence.
-
-### Why
-
-The project is a short-lived, single-account portfolio build where every billable resource is created deliberately through a reviewed plan. The reviewed plan prevents the spend; a budget alert would only report it afterwards.
-
-### Alternatives
-
-- Create an AWS Budget with an email alert. Rejected as retrospective for a project whose spend is already gated by a reviewed `terraform plan`. See [Managing your costs with AWS Budgets](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html).
-- Enable AWS Cost Anomaly Detection. Rejected because anomaly detection needs a spend baseline that a short project never establishes. See [AWS Cost Anomaly Detection](https://docs.aws.amazon.com/cost-management/latest/userguide/manage-ad.html).
-- Track nothing and check the console occasionally. Rejected because it leaves no written rule, which ADR-014 requires for a removed control.
-
 ## ADR-016: Focus on lifecycle and Private Access
 
 **Status:** Accepted
@@ -324,7 +298,7 @@ Federation is already demonstrated here; OIDC, OAuth, and Conditional Access hav
 
 ### Decision
 
-Plan one private AWS application and one supported Windows Server connector. Select EC2 or Fargate for the application only after a total-cost comparison. The initial test footprint need not provide high availability; record that limitation rather than presenting it as production-ready.
+Plan one private AWS application and one supported Windows Server connector. The initial test footprint need not provide high availability; record that limitation rather than presenting it as production-ready.
 
 Do not mandate a shared ECS platform, public ALB, internal ALB, two-AZ deployment, purchased domain, or NAT gateway. Approve the necessary outbound connectivity, private destination addressing, transport, and no-public-inbound management path before deployment. AWS service endpoints are not a replacement for connector connectivity to Microsoft.
 
@@ -332,31 +306,71 @@ Keep architecture-level modules where justified, inputs in private configuration
 
 ### Why
 
-The target exists to prove governed private reachability, not container-platform breadth. Networking and Windows hosting can dominate a small demonstration's cost.
+The target exists to prove governed private reachability. A single target and a single connector are enough to demonstrate it.
 
 ### Alternatives
 
-- Preserve the full [Fargate platform](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html). Deferred unless the complete estimate justifies it for one target.
+- Preserve the full [Fargate platform](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html) with a shared cluster and load balancers. Rejected as breadth this project does not need.
 - Put the application on a public endpoint. Rejected because it defeats the private-access boundary.
 - Run the connector in a Linux container. Rejected: use a supported host per [Microsoft connector setup](https://learn.microsoft.com/en-us/entra/global-secure-access/tutorial-private-access-connector-setup).
 
-## ADR-018: Budget test windows without cloud credits
+## ADR-019: Run the private target on ARM Fargate behind interface endpoints
+
+**Status:** Accepted
+**Date:** 2026-09-04
+
+**Supersedes:** the ADR-017 decision to defer the hosting model selection.
+
+### Decision
+
+Run the private application target as a single ARM64 Fargate task, and the Microsoft Entra private network connector on a `t3.xlarge` Windows Server 2022 instance, in one VPC with two single-AZ subnets:
+
+- The connector subnet routes to an internet gateway. The connector holds a public address for outbound registration and tunnel traffic, and its security group declares no ingress rule.
+- The target subnet has a route table with no entry beyond the VPC-local route and the S3 gateway endpoint. The task takes no public address, and its security group admits the application port only from the connector's security group.
+
+The task pulls its image through `ecr.api`, `ecr.dkr`, and `logs` interface endpoints plus the free S3 gateway endpoint, so nothing in the target tier needs an internet path. Publish the running task's private address as an IP-address application segment on TCP 80. Administer the connector through SSM Fleet Manager. Create the connector's EC2 key pair outside Terraform so no private key material enters state. `enable_private_access` gates the whole footprint, so a test window ends by setting it to `false` and applying.
+
+No NAT gateway or load balancer is deployed. The footprint is single-AZ and is not highly available.
+
+### Why
+
+The target exists to prove governed private reachability, and a container platform is worth demonstrating alongside it. ARM64 is the architecture the ARM64 workstation builds natively, so the image needs no cross-compilation.
+
+The endpoints are what keep the design honest. The connector's outbound allowlist is a set of wildcard FQDNs, including `*.msappproxy.net` and `*.servicebus.windows.net`, so endpoints cannot carry the connector's traffic and its subnet must be routed. The target's traffic is only ECR and CloudWatch Logs, which endpoints serve exactly, so the target subnet keeps an empty route table and its isolation stays a routing property rather than an absence of a public address.
+
+### Alternatives
+
+- Run the target on EC2 with a health response served from the AMI's Python build. Rejected: it removes the container platform from the project.
+- Give the Fargate task a public address in the routed subnet and pull from ECR over the internet gateway. Rejected: it contradicts the Phase 4 criterion that the target hold no public address, and it moves isolation onto the security group alone.
+- Reach ECR through a NAT gateway. Rejected: it gives the target a general internet path it has no use for.
+- Reach the connector over RDP from a permitted address. Rejected: [Fleet Manager Remote Desktop](https://docs.aws.amazon.com/systems-manager/latest/userguide/fleet-rdp.html) gives the interactive session that connector registration needs without an inbound rule.
+- Publish the target by FQDN. Deferred: an FQDN segment needs Private DNS configured in Global Secure Access, which adds a second failure mode to the first reachability test. Revisit once the IP segment works.
+
+## ADR-020: Reuse Grafana from the IAM lab as the private target, without its access layers
 
 **Status:** Accepted
 **Date:** 2026-09-04
 
 ### Decision
 
-Assume no promotional credits. Before each billable deployment, approve an itemized estimate, spend limit, test duration, and teardown procedure. Include compute, EBS, public IPv4 if used, egress, endpoints, logs, data transfer, and licences. Do not provision while these choices are unresolved.
+Use Grafana OSS as the private application target, adapted from the existing Grafana IAM lab. Take only the Grafana container. Do not carry over Caddy, the SCIM bridge, or the Entra OIDC configuration.
 
-Check actual spend after each test window and remove temporary billable resources immediately afterward. Retain only explicitly approved resources. A reviewed Terraform plan is not a cost estimate or a spending cap. Budget notifications can supplement these checks, but are not a hard stop. ADR-015's final-phase-only teardown rule no longer applies.
+Run Grafana with anonymous viewer access and the login form disabled, so the target authenticates nobody and holds no credentials. Pin the image tag and mirror it into the project ECR repository. Persist nothing: the task's Grafana database is ephemeral and is recreated with each test window.
 
 ### Why
 
-Without credits, idle infrastructure has a direct cost. Short test windows preserve the identity evidence without funding an always-on platform.
+A real application is better evidence than a static health page. An assigned identity landing on a working Grafana instance, and an unassigned one failing to resolve it at all, demonstrates the access boundary more convincingly than an HTTP 200.
+
+The three layers of the source lab do not all transfer:
+
+- Caddy exists to obtain and renew a public Let's Encrypt certificate against a public DNS label. A Private Access destination has no public record and cannot answer an ACME HTTP-01 challenge, so Caddy has no function here.
+- The OIDC and SCIM layers are the scope ADR-016 removed from this project as already covered elsewhere. The Grafana lab is where they are covered.
+
+Removing Grafana's own authentication is the point rather than a shortcut. If Grafana authenticated its users, a successful sign-in would prove Grafana's configuration works, not that Private Access allowed the session. With anonymous access, reachability is the only variable, and Entra holds the entire access decision. It also keeps every credential out of the image, the task definition, and Terraform state.
 
 ### Alternatives
 
-- Keep everything until final publication. Rejected because idle charges continue between phases; see [VPC pricing](https://aws.amazon.com/vpc/pricing/).
-- Stop EC2 and assume billing has ended. Rejected because [EBS storage still incurs charges](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/how-ec2-instance-stop-start-works.html).
-- Rely only on [AWS Budgets](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html). Insufficient as an enforcement mechanism; use estimates, time limits, spend checks, and teardown together.
+- Serve a static page from nginx or the AMI's Python build. Rejected: a weaker demonstration, and the Grafana lab already provides a working application.
+- Carry the whole compose stack across, including Caddy and the SCIM bridge. Rejected: Caddy cannot function without a public endpoint, and the SCIM bridge duplicates provisioning this project already performs against IAM Identity Center.
+- Keep Grafana's Entra OIDC sign-in behind Private Access. Rejected: it re-imports the scope ADR-016 removed, and it confuses which layer made the access decision.
+- Persist the Grafana database on EFS. Rejected: the target holds no state worth keeping between test windows, and it would add a mount target and a second security group to a footprint that is torn down regularly.

@@ -82,3 +82,6 @@ plan.md
 iam image dumo/
 docs/images/redaction/*
 !docs/images/redaction/README.md
+
+# Agent working files
+.claude/
