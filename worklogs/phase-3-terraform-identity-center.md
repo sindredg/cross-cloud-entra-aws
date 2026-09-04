@@ -46,10 +46,10 @@ Closing this phase exposed Phase 0 items that were never blocking work in progre
 
 | Item | Outcome |
 | --- | --- |
-| AWS Budget and cost anomaly alerts | Removed. ADR-015 records the cost-control decision. |
+| AWS Budget and cost anomaly alerts | Removed. The footprint is small and time-boxed, and Terraform gates it behind a single flag. |
 | Bootstrap permission set | Removed from AWS. The Terraform-managed administrator path is the only administrative route. |
-| DNS domain, certificate path, public host names | Moved to Phase 7, which registers the applications that depend on them. |
-| Windows 11 device and Global Secure Access client | Moved to Phase 9, which installs the connector. |
+| DNS domain, certificate path, public host names | Dropped. ADR-016 removed the public applications that needed them. |
+| Windows 11 device and Global Secure Access client | Moved to Phase 5, which registers the connector and publishes the application. |
 | PowerShell 7, Microsoft Graph modules, `jq` | Moved to Phase 2, which needs them for Lifecycle Workflow payloads. |
 | Fargate CPU architecture decision | Moved to Phase 6, which builds the first image. |
 | CIDR and feature-flag variables | Moved to Phase 4, which introduces the network. |
