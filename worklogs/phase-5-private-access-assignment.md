@@ -16,6 +16,40 @@ The client was an Entra-joined Windows 11 VM in Azure at `172.16.0.4`. Azure and
 
 ![Invoke-WebRequest returns 200 and 49,401 bytes](../docs/images/phase-5-09-http-200.png)
 
+## How the traffic reaches an isolated subnet
+
+Neither end of this path is reachable from the other. The Azure VM has no route to `10.20.0.0/16`, and the AWS target subnet has a route table carrying nothing but the VPC-local route and an S3 gateway endpoint. The connector opens the only channel, and it opens it outbound.
+
+```mermaid
+flowchart LR
+    subgraph Azure["Azure"]
+        Client["Windows 11 VM<br/>172.16.0.4<br/>Entra joined, GSA client"]
+    end
+
+    subgraph Entra["Microsoft Entra"]
+        Edge["Global Secure Access edge<br/>Evaluates app assignment<br/>and Conditional Access"]
+        PA["Private Access service"]
+    end
+
+    subgraph VPC["AWS VPC 10.20.0.0/16, eu-north-1"]
+        subgraph Routed["Routed subnet"]
+            Connector["Private network connector<br/>10.20.0.155<br/>No inbound rule"]
+        end
+        subgraph Isolated["Isolated subnet, no internet route"]
+            Target["Grafana on Fargate<br/>10.20.1.63:3000<br/>No public address"]
+        end
+    end
+
+    Client -->|"1 Client intercepts 10.20.1.63:3000<br/>at the socket layer, not by routing"| Edge
+    Edge -->|"2 Authorised, token issued for the app"| PA
+    Connector -.->|"3 Connector dials out and holds<br/>the tunnel open"| PA
+    PA -->|"4 Session brokered onto<br/>the existing tunnel"| Connector
+    Connector -->|"5 TCP 3000, allowed only from<br/>the connector security group"| Target
+```
+
+Nothing listens for the client. The connector is reachable on no inbound port, the target has no public address, and there is no peering or VPN between the two clouds. Authorisation happens at step 2, before any packet approaches AWS, which is what makes this an identity boundary rather than a network one.
+
+
 ## Configuration
 
 Connector group `aws-access`, holding the single connector on the AWS host, region Europe.
