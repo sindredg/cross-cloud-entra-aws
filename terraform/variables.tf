@@ -42,3 +42,25 @@ variable "environment" {
     error_message = "environment must be 2-16 lowercase letters, numbers, or hyphens and start with a letter."
   }
 }
+
+variable "enable_private_access" {
+  description = <<-EOT
+    Creates the Private Access test footprint: one VPC, one Windows connector
+    host, and one private application target. Set to false and apply to tear the
+    footprint down between test windows; the Identity Center resources are
+    unaffected.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "connector_key_name" {
+  description = <<-EOT
+    Existing EC2 key pair used to retrieve the connector's Windows administrator
+    password. Create it outside Terraform so no private key material enters
+    state. Only used when enable_private_access is true.
+  EOT
+  type        = string
+  default     = null
+  nullable    = true
+}

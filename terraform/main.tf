@@ -7,3 +7,15 @@ module "identity_center" {
   permission_sets   = local.identity_center_permission_sets
   tags              = local.common_tags
 }
+
+module "private_access" {
+  source = "./modules/private_access"
+  count  = var.enable_private_access ? 1 : 0
+
+  name_prefix           = var.name_prefix
+  vpc_cidr              = local.private_access_network.vpc_cidr
+  connector_subnet_cidr = local.private_access_network.connector_subnet_cidr
+  target_subnet_cidr    = local.private_access_network.target_subnet_cidr
+  connector_key_name    = var.connector_key_name
+  tags                  = local.common_tags
+}
