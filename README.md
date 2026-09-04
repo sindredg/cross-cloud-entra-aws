@@ -40,7 +40,7 @@ flowchart LR
     Connector -->|"Private application port"| Target
 ```
 
-The diagram shows the access boundaries. The AWS footprint is deployed; the Private Access service is not yet registered. Existing Entra federation provides AWS sign-in. SCIM owns workforce users and AWS group memberships; Terraform owns permission sets and account assignments. Application reachability is tested separately from application authentication and existing-session termination.
+The diagram shows the access boundaries. The Private Access path is proven end to end; the AWS footprint is torn down between test windows. Existing Entra federation provides AWS sign-in. SCIM owns workforce users and AWS group memberships; Terraform owns permission sets and account assignments. Application reachability is tested separately from application authentication and existing-session termination.
 
 ## Implemented
 
@@ -51,6 +51,7 @@ The diagram shows the access boundaries. The AWS footprint is deployed; the Priv
 | 2 | Reusable Graph JSON workflow deployment; tenant values kept in ignored local copies | [worklog](worklogs/phase-2-lifecycle-workflows-as-code.md) |
 | 3 | Three Terraform-managed permission sets and account assignments | [worklog](worklogs/phase-3-terraform-identity-center.md) |
 | 4 | Private VPC footprint with Grafana on ARM Fargate, reachable only from the connector | [worklog](worklogs/phase-4-private-access-footprint.md) |
+| 5 | Grafana reached over Entra Private Access from an Entra-joined client, no VPN or peering | [worklog](worklogs/phase-5-private-access-assignment.md) |
 
 ## Remaining work
 
@@ -58,6 +59,6 @@ The diagram shows the access boundaries. The AWS footprint is deployed; the Priv
 | --- | --- |
 | 0–2 | Close readiness gaps and capture Joiner timing evidence |
 | 4 | Register the connector against the deployed target and verify the reachability boundary |
-| 5 | Publish per-app Private Access and validate governed allow/deny paths |
+| 5 | Run the denial case for an unassigned identity, and move assignment into an access package |
 | 6 | Validate Mover changes across AWS and private-access entitlements |
 | 7 | Validate Leaver behavior, existing sessions, evidence, and teardown |

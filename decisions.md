@@ -374,3 +374,26 @@ Removing Grafana's own authentication is the point rather than a shortcut. If Gr
 - Carry the whole compose stack across, including Caddy and the SCIM bridge. Rejected: Caddy cannot function without a public endpoint, and the SCIM bridge duplicates provisioning this project already performs against IAM Identity Center.
 - Keep Grafana's Entra OIDC sign-in behind Private Access. Rejected: it re-imports the scope ADR-016 removed, and it confuses which layer made the access decision.
 - Persist the Grafana database on EFS. Rejected: the target holds no state worth keeping between test windows, and it would add a mount target and a second security group to a footprint that is torn down regularly.
+
+## ADR-021: Use an Entra-joined VM as the Private Access test client
+
+**Status:** Accepted
+**Date:** 2026-09-05
+
+### Decision
+
+Test Microsoft Entra Private Access from an Entra-joined Windows 11 VM rather than from the project workstation.
+
+### Why
+
+The Global Secure Access client needs a user token, which needs a Primary Refresh Token. A device that is only Entra registered, signed into Windows with a personal Microsoft account, never issues one. The client fails with `AADSTS9002341: User is required to permit SSO`, retries every 60 seconds, and never receives a forwarding profile. It reports only `Signed out`, which does not point at the cause.
+
+The workstation is Windows 11 Home, and Home cannot be Entra joined at all: join requires Pro, Enterprise or Education. No configuration change could fix it. The portal lists Microsoft Entra joined as a system requirement for both the x64 and Arm64 clients.
+
+A joined VM obtains a PRT at Windows sign-in and acquires tokens silently. It also improves the evidence: the VM sits in Azure with no network path to the AWS VPC, so a successful request proves the tunnel carried it.
+
+### Alternatives
+
+- Upgrade the workstation to Windows 11 Pro. Rejected as a licence purchase to work around a test-client constraint.
+- Rely on Entra registered support. Rejected: the [client install requirements](https://learn.microsoft.com/entra/global-secure-access/how-to-install-windows-client) list registered devices as supported in preview, but a registered device with a consumer Windows sign-in cannot produce the PRT the client needs, so the path does not work in this configuration.
+- Test from the connector host. Rejected: it reaches the target directly over the VPC and would prove nothing about Private Access.
