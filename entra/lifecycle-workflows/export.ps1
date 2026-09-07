@@ -55,7 +55,7 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'common.ps1')
 
-Connect-ProjectGraph -TenantId $TenantId
+Connect-ProjectGraph -Scopes $script:GraphScopes -TenantId $TenantId
 
 if ($PSCmdlet.ParameterSetName -eq 'ByDisplayName') {
     $workflow = Get-WorkflowByDisplayName -DisplayName $DisplayName

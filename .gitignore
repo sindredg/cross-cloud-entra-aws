@@ -18,6 +18,9 @@ terraform.rc
 # Lifecycle Workflow exports before templating; they carry tenant object IDs
 entra/lifecycle-workflows/local/
 
+# Filled-in entitlement management definitions and exports; tenant display names
+entra/access-packages/local/
+
 # AWS and Bicep local configuration
 .aws/
 .aws-sam/

@@ -397,3 +397,75 @@ A joined VM obtains a PRT at Windows sign-in and acquires tokens silently. It al
 - Upgrade the workstation to Windows 11 Pro. Rejected as a licence purchase to work around a test-client constraint.
 - Rely on Entra registered support. Rejected: the [client install requirements](https://learn.microsoft.com/entra/global-secure-access/how-to-install-windows-client) list registered devices as supported in preview, but a registered device with a consumer Windows sign-in cannot produce the PRT the client needs, so the path does not work in this configuration.
 - Test from the connector host. Rejected: it reaches the target directly over the VPC and would prove nothing about Private Access.
+
+## ADR-022: Manage entitlement management objects as Graph JSON
+
+**Status:** Accepted
+**Date:** 2026-09-07
+
+### Decision
+
+Declare the access package catalog, the access packages, their resource roles, and their assignment policies as JSON under `entra/access-packages/`, deployed through the Microsoft Graph REST API by a script that reconciles rather than recreates. Name every object; never commit an object ID.
+
+### Why
+
+The Lifecycle Workflow definitions already reference access packages by display name and resolve them to IDs at deployment time. Until now those packages existed only in the portal, so the workflows were reproducible and the objects they act on were not. A reader could not tell what `AP-Cross-Cloud Baseline` contained, and the Mover's package swap could not be deployed at all because its second package did not exist.
+
+Graph Bicep cannot manage these resources. It supports only `applications`, `appRoleAssignedTo`, `federatedIdentityCredentials`, `groups`, `oauth2PermissionGrants`, `servicePrincipals`, and `users`, which is the same limit that sent the workflows to REST in the first place. Extending the pattern already used for workflows keeps one approach for Entra objects instead of two.
+
+The reconcile compares only the properties a definition states. Graph returns many read-only and defaulted properties on these objects; a definition that had to mirror all of them would break on the next service change and would say nothing about intent.
+
+It never deletes. Removing a resource role or an assignment policy revokes access from every live assignment, so extras are reported and left in place for a human to remove deliberately.
+
+### Alternatives
+
+- Keep creating packages in the portal. Rejected: it leaves the object at the centre of the Joiner, Mover, and Leaver story undocumented, and it was already blocking the Mover.
+- Use the `Microsoft.Graph.Identity.Governance` PowerShell cmdlets instead of raw REST. Rejected: the cmdlets wrap the same [entitlement management API](https://learn.microsoft.com/graph/api/resources/entitlementmanagement-overview) and would add a second large module dependency to a repository that already speaks to Graph directly.
+- Use Terraform with the AzureAD provider. Rejected: the provider does not cover entitlement management, and splitting Entra objects across two tools for one feature would cost more than it saves.
+- Let the reconcile delete undeclared roles and policies. Rejected: a file comparison is not enough justification for revoking live access. See the [resource role scope API](https://learn.microsoft.com/graph/api/accesspackage-post-resourcerolescopes?view=graph-rest-1.0), which delivers a role to every current and future assignment.
+
+## ADR-023: Grant the private application through an access package, not a group
+
+**Status:** Accepted
+**Date:** 2026-09-07
+
+### Decision
+
+Assign the Global Secure Access application for the private AWS target through an access package rather than directly to the AWS role groups. Remove the direct group assignments Phase 5 created.
+
+### Why
+
+Phase 5 assigned the application to `AWS-Administrators`, `AWS-Auditors`, and `AWS-Developers`. That proved the tunnel works, and it also made every role equivalent: there was no identity that could be refused, so the phase demonstrated reachability rather than a boundary, and its denial exit criterion could not be met at all.
+
+Granting through a package separates the two entitlements that a role change should move. AWS role access stays attribute-driven, because the role groups are dynamic and no package can add a member to a dynamic group. Private application access becomes governed, requested by a workflow task and removable by one. The Mover then has something to swap and the Leaver has something to remove, and the same attribute change moves both halves through two mechanisms that know nothing about each other.
+
+It also produces the denial case for free: before promotion the worker holds no entitlement to the application, so the request fails at the Global Secure Access edge before any packet approaches AWS.
+
+### Alternatives
+
+- Keep the direct group assignments and add the package alongside. Rejected: two grant paths mean the package can be removed with no observable effect, which is worse evidence than no package at all.
+- Put the AWS role groups in the access package instead. Rejected: they are dynamic groups, whose membership is computed from user attributes. Entitlement management cannot add a member to one. See [dynamic membership rules](https://learn.microsoft.com/entra/identity/users/groups-dynamic-membership).
+- Use a Conditional Access policy to gate the application by group. Rejected: it would move the decision to a second control plane and would not give the Leaver an assignment to remove.
+
+## ADR-024: Measure lifecycle delays from Graph and the AWS API, not from the portal
+
+**Status:** Accepted
+**Date:** 2026-09-07
+
+### Decision
+
+Record lifecycle timings from `identityGovernance/lifecycleWorkflows` task processing results and from the IAM Identity Store API, through `entra/lifecycle-workflows/run.ps1` and `scripts/watch-identity-center-membership.sh`. Do not report a delay read off a console refresh.
+
+### Why
+
+The project claims measured access-removal delays. The portal reports a run as a pass or fail count, which supports "it worked" and not "it took this long". Graph records `startedDateTime` and `completedDateTime` per task, which is the authoritative number and costs nothing to read.
+
+The AWS half needs its own measurement because it happens through a chain nothing reports on end to end: an attribute changes, dynamic membership recomputes, SCIM provisions the change. The Identity Store API exposes no enabled or disabled flag for a user, so a disabled account is observed as the loss of its group memberships. That is also the state that matters, since permission sets are assigned to groups.
+
+Keeping the two measurements in separate tools reflects that they are separate delays in series rather than one number.
+
+### Alternatives
+
+- Read timings from the workflow history blade. Rejected: it rounds, it does not expose per-task start times, and a screenshot of it is not a measurement.
+- Use Entra audit logs as the source. Rejected: they are authoritative but arrive with their own ingestion delay, which would be measured along with the thing being measured.
+- Poll `DescribeUser` for a disabled flag. Rejected: the [Identity Store API](https://docs.aws.amazon.com/singlesignon/latest/IdentityStoreAPIReference/API_DescribeUser.html) returns no such attribute, and group membership is the property that actually carries access.

@@ -53,12 +53,26 @@ The diagram shows the access boundaries. The Private Access path is proven end t
 | 4 | Private VPC footprint with Grafana on ARM Fargate, reachable only from the connector | [worklog](worklogs/phase-4-private-access-footprint.md) |
 | 5 | Grafana reached over Entra Private Access from an Entra-joined client, no VPN or peering | [worklog](worklogs/phase-5-private-access-assignment.md) |
 
+## Identity as code
+
+| Path | Manages | Mechanism |
+| --- | --- | --- |
+| [`entra/groups/`](entra/groups/) | Dynamic role groups | Graph Bicep |
+| [`entra/lifecycle-workflows/`](entra/lifecycle-workflows/) | Joiner, Mover, Leaver; on-demand runs and timings | Graph REST |
+| [`entra/access-packages/`](entra/access-packages/) | Catalog, access packages, resource roles, assignment policies | Graph REST |
+| [`terraform/`](terraform/) | Permission sets, account assignments, the private footprint | Terraform |
+| [`scripts/`](scripts/) | SCIM propagation timings on the AWS side | AWS CLI |
+
+Graph Bicep covers only a fixed set of resource types, which excludes both Lifecycle Workflows and entitlement management, so those go to the REST API instead. See ADR-022. No committed definition contains a tenant object ID: every object is named, and names resolve at deployment time.
+
 ## Remaining work
 
-| Phase | Scope |
-| --- | --- |
-| 0–2 | Close readiness gaps and capture Joiner timing evidence |
-| 4 | Register the connector against the deployed target and verify the reachability boundary |
-| 5 | Run the denial case for an unassigned identity, and move assignment into an access package |
-| 6 | Validate Mover changes across AWS and private-access entitlements |
-| 7 | Validate Leaver behavior, existing sessions, evidence, and teardown |
+| Phase | Scope | Plan |
+| --- | --- | --- |
+| 0–2 | Close readiness gaps and capture Joiner timing evidence | |
+| 4 | Redeploy the footprint and republish the segment against the new task address | |
+| 5 | Denial case for an unentitled identity; assignment through an access package | folded into Phase 6 |
+| 6 | Validate Mover changes across AWS and private-access entitlements | [runbook](docs/runbooks/phase-6-mover.md) |
+| 7 | Validate Leaver behavior, existing sessions, evidence, and teardown | [runbook](docs/runbooks/phase-7-leaver.md) |
+
+Phase 5's unmet exit criterion, the denial case, is recorded in Phase 6 rather than by reopening the phase: the same run that shows an unentitled identity refused is the "before" half of the Mover evidence.
