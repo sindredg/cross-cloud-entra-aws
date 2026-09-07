@@ -60,7 +60,7 @@ else {
 
 if (-not $definitionFiles) { throw "No *.example.json definitions found under $Path." }
 
-Connect-ProjectGraph -TenantId $TenantId
+Connect-ProjectGraph -Scopes $script:GraphScopes -TenantId $TenantId
 
 $summary = @()
 

@@ -1,0 +1,7 @@
+{
+  "type": "catalog",
+  "displayName": "<CATALOG_DISPLAY_NAME>",
+  "description": "Resources governed for the cross-cloud identity project.",
+  "state": "published",
+  "isExternallyVisible": false
+}

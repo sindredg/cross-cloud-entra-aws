@@ -1,0 +1,36 @@
+{
+  "type": "accessPackage",
+  "catalog": "<CATALOG_DISPLAY_NAME>",
+  "displayName": "<BASELINE_ACCESS_PACKAGE_DISPLAY_NAME>",
+  "description": "Baseline entitlement every project worker holds from the hire date. Delivers no resource role: AWS role access comes from attribute-driven dynamic groups, so this package is the governed record that the Joiner ran and the object the Leaver removes.",
+  "isHidden": false,
+  "resourceRoles": [],
+  "assignmentPolicies": [
+    {
+      "displayName": "<DIRECT_ASSIGNMENT_POLICY_DISPLAY_NAME>",
+      "description": "Direct assignment only. The Joiner workflow requests the assignment; no user can request it and no approval stage runs.",
+      "allowedTargetScope": "notSpecified",
+      "specificAllowedTargets": [],
+      "expiration": {
+        "type": "noExpiration",
+        "endDateTime": null,
+        "duration": null
+      },
+      "requestorSettings": {
+        "enableTargetsToSelfAddAccess": false,
+        "enableTargetsToSelfUpdateAccess": false,
+        "enableTargetsToSelfRemoveAccess": false,
+        "allowCustomAssignmentSchedule": true,
+        "enableOnBehalfRequestorsToAddAccess": false,
+        "enableOnBehalfRequestorsToUpdateAccess": false,
+        "enableOnBehalfRequestorsToRemoveAccess": false,
+        "onBehalfRequestors": []
+      },
+      "requestApprovalSettings": {
+        "isApprovalRequiredForAdd": false,
+        "isApprovalRequiredForUpdate": false,
+        "stages": []
+      }
+    }
+  ]
+}

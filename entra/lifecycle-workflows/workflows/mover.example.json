@@ -1,7 +1,7 @@
 {
   "category": "mover",
   "displayName": "<MOVER_WORKFLOW_DISPLAY_NAME>",
-  "description": "Swap entitlements when the job title or department of a project identity changes.",
+  "description": "Swap entitlements when the job title of a project identity changes. An attributeChangeTrigger accepts exactly one attribute, so a department change without a title change is not a role change in this model.",
   "isEnabled": true,
   "isSchedulingEnabled": false,
   "executionConditions": {

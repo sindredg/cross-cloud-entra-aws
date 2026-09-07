@@ -1,7 +1,12 @@
-# Shared helpers for exporting and deploying Lifecycle Workflow definitions.
-# Dot-source this file; do not run it directly.
+# Shared helpers for exporting, deploying, and running Lifecycle Workflow
+# definitions. Dot-source this file; do not run it directly.
 
 Set-StrictMode -Version Latest
+
+# Connect-ProjectGraph, Invoke-Graph, Invoke-GraphCollection,
+# ConvertTo-ODataLiteral, and New-GraphQuery live one level up, because
+# entra/access-packages/ needs the same client.
+. (Join-Path $PSScriptRoot '..' 'graph-common.ps1')
 
 # Properties Microsoft Graph assigns. They must not appear in a create or
 # createNewVersion request body, so the export strips them.
@@ -33,70 +38,13 @@ $script:PatchableWorkflowProperties = @(
     'isSchedulingEnabled'
 )
 
+# Reading and writing definitions needs no more than these. run.ps1 adds the
+# scopes that activating a workflow and resolving a user require.
 $script:GraphScopes = @(
     'LifecycleWorkflows-Workflow.ReadWrite.All'
     'Group.Read.All'
     'EntitlementManagement.Read.All'
 )
-
-function Connect-ProjectGraph {
-    <#
-    .SYNOPSIS
-    Connects to Microsoft Graph with the least privilege these scripts need.
-    #>
-    [CmdletBinding()]
-    param(
-        [string] $TenantId
-    )
-
-    $context = Get-MgContext -ErrorAction SilentlyContinue
-    if ($context) {
-        $missing = $script:GraphScopes | Where-Object { $_ -notin $context.Scopes }
-        if (-not $missing) {
-            Write-Verbose "Reusing the existing Microsoft Graph connection."
-            return
-        }
-        Write-Verbose "Reconnecting to add missing scopes: $($missing -join ', ')"
-    }
-
-    $connectArgs = @{ Scopes = $script:GraphScopes; NoWelcome = $true }
-    if ($TenantId) { $connectArgs['TenantId'] = $TenantId }
-    Connect-MgGraph @connectArgs
-}
-
-function Invoke-Graph {
-    <#
-    .SYNOPSIS
-    Calls Microsoft Graph v1.0 and returns the response as a PSObject.
-    #>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)] [ValidateSet('GET', 'POST', 'PATCH', 'DELETE')] [string] $Method,
-        [Parameter(Mandatory)] [string] $Uri,
-        [object] $Body
-    )
-
-    $requestArgs = @{
-        Method     = $Method
-        Uri        = "https://graph.microsoft.com/v1.0$Uri"
-        OutputType = 'PSObject'
-    }
-    if ($PSBoundParameters.ContainsKey('Body')) {
-        $requestArgs['Body'] = ($Body | ConvertTo-Json -Depth 20 -Compress)
-        $requestArgs['ContentType'] = 'application/json'
-    }
-
-    Invoke-MgGraphRequest @requestArgs
-}
-
-function ConvertTo-ODataLiteral {
-    <#
-    .SYNOPSIS
-    Escapes a string for use inside an OData filter literal.
-    #>
-    param([Parameter(Mandatory)] [string] $Value)
-    $Value -replace "'", "''"
-}
 
 # ---------------------------------------------------------------------------
 # Placeholder resolution

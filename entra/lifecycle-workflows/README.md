@@ -10,9 +10,12 @@ Microsoft Graph Bicep cannot manage these resources. It supports only `applicati
 workflows/*.example.json   Committed templates. Placeholders, never object IDs.
 local/                     Your filled-in definitions and raw exports. Git-ignored.
 deploy.ps1                 Creates or updates workflows from JSON. Defaults to local/.
+run.ps1                    Runs a workflow on demand and reports per-task timings.
 export.ps1                 Reads a workflow from the tenant into local/.
-common.ps1                 Shared Graph helpers. Dot-sourced, not run directly.
+common.ps1                 Shared helpers. Dot-sourced, not run directly.
 ```
+
+Graph request plumbing lives in [`../graph-common.ps1`](../graph-common.ps1), which [`../access-packages/`](../access-packages/) shares.
 
 Nothing in `local/` is ever committed. It holds tenant object IDs and display names.
 
@@ -84,6 +87,27 @@ The split is forced by the API: `PATCH` on a workflow accepts only those four pr
 
 `category` cannot change after creation. If a definition changes it, the script stops and tells you to use a different display name.
 
+## Run and measure
+
+The portal reports a run as a pass or fail count. That is enough to say a workflow worked and not enough to say how long access took to arrive or leave, which is the claim this project makes. `run.ps1` activates a workflow for named users, waits for the run to settle, and prints what Graph recorded for each task:
+
+```bash
+pwsh ./entra/lifecycle-workflows/run.ps1 -WorkflowDisplayName 'CrossCloud Leaver' -UserPrincipalName ana@example.com -WhatIf
+pwsh ./entra/lifecycle-workflows/run.ps1 -WorkflowDisplayName 'CrossCloud Leaver' -UserPrincipalName ana@example.com -OutFile ./local/leaver-run.md
+```
+
+`-OutFile` writes a Markdown table for a worklog. It carries user principal names, so redact it before committing.
+
+Every timing except queue time comes from Graph. The only local measurement is the interval between activation and the first task starting.
+
+Three things to know before running one against a real account:
+
+- The workflow must be enabled. Graph refuses to activate a disabled workflow and the error does not say so, which is why the script checks first.
+- An on-demand run **ignores the execution conditions**. Every task applies to every named user whether or not they match the scope rule or the trigger. That is what makes it usable for testing, and it is also why the target has to be the synthetic account.
+- Ten users per activation is the Graph limit.
+
+The AWS half of the same measurement is [`scripts/watch-identity-center-membership.sh`](../../scripts/watch-identity-center-membership.sh), which times how long a membership change takes to arrive through SCIM.
+
 ## Export
 
 After editing a workflow in the portal, pull the change back:
@@ -113,4 +137,6 @@ An `attributeChangeTrigger` accepts exactly one attribute. Declaring two returns
 | `mover.example.json` | mover | Removes the previous access package, requests the new one, and revokes refresh tokens so the next token carries new claims |
 | `leaver.example.json` | leaver | Cancels pending requests, removes all access package assignments, revokes refresh tokens, and disables the account so SCIM deprovisions the AWS user |
 
-The Joiner matches the workflow validated in Phase 2. The deployed Mover currently carries only the token revocation task; its access package swap waits on the elevated package that Phase 7 creates. The Leaver has been deployed but not yet run.
+The Joiner matches the workflow validated in Phase 2. The Mover's access package swap was blocked on a second package that did not exist; [`../access-packages/`](../access-packages/) now declares it, so the committed Mover deploys in full. The Leaver has been deployed but not yet run.
+
+The access package names in these definitions must match the display names in the access package definitions, because that is what `${accessPackage:...}` resolves against. A rename in one place produces a deployment error in the other rather than a silently wrong workflow.
