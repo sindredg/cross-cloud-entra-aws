@@ -113,4 +113,4 @@ An `attributeChangeTrigger` accepts exactly one attribute. Declaring two returns
 | `mover.example.json` | mover | Removes the previous access package, requests the new one, and revokes refresh tokens so the next token carries new claims |
 | `leaver.example.json` | leaver | Cancels pending requests, removes all access package assignments, revokes refresh tokens, and disables the account so SCIM deprovisions the AWS user |
 
-The Joiner matches the workflow validated in Phase 2. The deployed Mover carries the full package swap and references `AP-Cross-Cloud Elevated` and its `Initial Policy` by display name, so that package must exist before the Mover runs. The Leaver has been deployed but not yet run.
+The Joiner matches the workflow validated in Phase 2. The deployed Mover carries only the token revocation task; its access package swap stays in the committed definition until `AP-Cross-Cloud Elevated` exists, at which point `deploy.ps1` publishes a new version. The Leaver has been deployed but not yet run.
