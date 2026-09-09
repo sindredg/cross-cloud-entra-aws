@@ -2,7 +2,7 @@
 
 Record decisions as Decision, Why, and Alternatives with documentation links. Keep superseded entries as history, not current implementation requirements.
 
-Current scope: [lifecycle and Private Access](#adr-016-focus-on-lifecycle-and-private-access), a [minimal footprint for one private target](#adr-017-size-infrastructure-for-one-private-target), and [Grafana as that target](#adr-020-reuse-grafana-from-the-iam-lab-as-the-private-target-without-its-access-layers). Existing federation, SCIM, and permission sets remain in use.
+Current scope: [lifecycle and Private Access](#adr-016-focus-on-lifecycle-and-private-access), a [minimal footprint for one private target](#adr-017-size-infrastructure-for-one-private-target), and [Grafana as that target](#adr-020-reuse-grafana-from-the-iam-lab-as-the-private-target-without-its-access-layers). Existing federation, SCIM, and permission sets remain in use. [ADR-022](#adr-022-conclude-infrastructure-dependent-validation-after-the-reachability-proof) closes the infrastructure-dependent work and states what that leaves unproven.
 
 ## ADR-001: Build the project in verified phases
 
@@ -397,3 +397,39 @@ A joined VM obtains a PRT at Windows sign-in and acquires tokens silently. It al
 - Upgrade the workstation to Windows 11 Pro. Rejected as a licence purchase to work around a test-client constraint.
 - Rely on Entra registered support. Rejected: the [client install requirements](https://learn.microsoft.com/entra/global-secure-access/how-to-install-windows-client) list registered devices as supported in preview, but a registered device with a consumer Windows sign-in cannot produce the PRT the client needs, so the path does not work in this configuration.
 - Test from the connector host. Rejected: it reaches the target directly over the VPC and would prove nothing about Private Access.
+
+## ADR-022: Conclude infrastructure-dependent validation after the reachability proof
+
+**Status:** Accepted
+**Date:** 2026-09-09
+
+### Decision
+
+Do not rebuild the private AWS footprint. Complete the remaining lifecycle validation entirely in Entra and IAM Identity Center, and state the two claims that leaves unproven rather than leaving them as open checklist items.
+
+### Why
+
+The footprint was destroyed after the Phase 5 test window on 2026-09-05. Rebuilding it to finish the outstanding items would cost a Windows connector host, four interface endpoints, and a Fargate task for as long as the work took, plus the manual repairs a rebuild forces: the ECR repository sits inside the gated module so the image is destroyed with it, connector registration is not held in Terraform and has to be redone by hand, and Fargate reassigns the task address on every replacement so the application segment must be republished. The address already moved once during Phase 4 for that reason.
+
+What that spend would buy is narrow. The project's central claim is that identity, not network topology, governs reach to a private application, and Phase 5 evidenced it: Grafana on an isolated AWS subnet answered `HTTP/1.1 200 OK` with 49,401 bytes to an Entra-joined Azure VM that has no route to the VPC and no peering or VPN to it. Authorisation happened at the Global Secure Access edge before any packet approached AWS.
+
+Everything still open is identity-side and free. IAM Identity Center, permission sets, account assignments, and SCIM provisioning carry no charge, so the Joiner, Mover, and Leaver progression can be completed and evidenced end to end across both clouds without provisioning anything.
+
+The denial case is the item this decision looks worst against, so it is worth being exact about what is and is not evidenced. The Private Access application is assignment-gated to the three AWS role groups, which is shown in the Phase 5 configuration evidence. The enforcement mechanism is Entra enterprise application assignment, and it was observed rejecting an unassigned user with `AADSTS50105` during Phase 1 troubleshooting. So the control is shown configured and the mechanism is shown working. What was never observed is the client-side symptom: an unassigned identity receiving no forwarding-profile rule for the segment. Private Access decides before brokering a session, so this is a gap in the observed surface rather than in the boundary itself.
+
+### Consequences
+
+Two claims are carried as unproven, and the scope boundary in `plan.md` states them:
+
+- The Global Secure Access client denial surface for an unassigned identity.
+- Application-level reachability changing across a role move: Grafana refusing the Mover persona before promotion and answering after.
+
+Both would be settled by one test window. Set `enable_private_access` to `true`, rebuild and push the image, re-register the connector, and republish the segment against the new task address.
+
+### Alternatives
+
+- Keep the footprint running between test windows. Rejected: the Windows connector host and the interface endpoints bill continuously, and the remaining work does not need them.
+- Rebuild once and finish everything in a single window. Rejected on cost against the marginal evidence, which is the client-side symptom of a mechanism already evidenced elsewhere. This is the option to revisit if the work is ever resumed.
+- Mark Phases 6 and 7 complete on the identity results alone. Rejected: the reachability halves are genuinely untested, and a checklist that hides that is worth less than one that states it.
+- Restructure the footprint to make rebuilds cheap, by moving ECR outside the gate and publishing an FQDN segment through Service Connect. Rejected: it only pays off across repeated deployments, which this decision rules out.
+
