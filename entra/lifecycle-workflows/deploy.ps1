@@ -21,7 +21,7 @@ Microsoft Graph limits what a PATCH can change, so this script uses three paths:
 Re-running with no changes makes no write calls.
 
 .PARAMETER Path
-A definition file or a directory of them. Defaults to ./workflows.
+A definition file or a directory of them. Defaults to ./local.
 
 .PARAMETER TenantId
 Optional tenant to sign in to.
@@ -31,10 +31,10 @@ Reports the action for each definition without writing to the tenant.
 
 .EXAMPLE
 ./deploy.ps1 -WhatIf
-Shows what would change for every definition in ./workflows.
+Shows what would change for every definition in ./local.
 
 .EXAMPLE
-./deploy.ps1 -Path ./workflows/joiner.example.json
+./deploy.ps1 -Path ./local/joiner.json
 Reconciles one workflow.
 #>
 [CmdletBinding(SupportsShouldProcess)]
@@ -58,7 +58,7 @@ else {
     Get-Item -Path $Path
 }
 
-if (-not $definitionFiles) { throw "No *.example.json definitions found under $Path." }
+if (-not $definitionFiles) { throw "No *.json definitions found under $Path." }
 
 Connect-ProjectGraph -TenantId $TenantId
 
@@ -89,13 +89,14 @@ foreach ($file in $definitionFiles) {
     $existing = Get-WorkflowByDisplayName -DisplayName $resolved.displayName
 
     if (-not $existing) {
-        $action = 'create'
         if ($PSCmdlet.ShouldProcess($resolved.displayName, 'Create workflow')) {
             $created = Invoke-Graph -Method POST -Uri '/identityGovernance/lifecycleWorkflows/workflows' -Body $resolved
             Write-Host "  Created workflow $($created.id) at version $($created.version)."
+            $action = 'created'
         }
         else {
             Write-Host "  Would create this workflow."
+            $action = 'would create'
         }
         $summary += [pscustomobject]@{ File = $file.Name; Workflow = $resolved.displayName; Action = $action }
         continue
@@ -119,29 +120,31 @@ foreach ($file in $definitionFiles) {
     if ($needsNewVersion) {
         # createNewVersion carries the whole workflow, so the patchable fields
         # travel with it and a separate PATCH would be redundant.
-        $action = 'new version'
         Write-Host "  Tasks or execution conditions changed."
         if ($PSCmdlet.ShouldProcess($resolved.displayName, 'Create new workflow version')) {
             $result = Invoke-Graph -Method POST `
                 -Uri "/identityGovernance/lifecycleWorkflows/workflows/$($existing.id)/createNewVersion" `
                 -Body @{ workflow = $resolved }
             Write-Host "  Published version $($result.version)."
+            $action = 'new version'
         }
         else {
             Write-Host "  Would publish a new version."
+            $action = 'would publish new version'
         }
     }
     elseif ($patch.Count -gt 0) {
-        $action = 'patch'
         Write-Host "  Changed: $($patch.Keys -join ', ')"
         if ($PSCmdlet.ShouldProcess($resolved.displayName, 'Update workflow')) {
             Invoke-Graph -Method PATCH `
                 -Uri "/identityGovernance/lifecycleWorkflows/workflows/$($existing.id)" `
                 -Body $patch | Out-Null
             Write-Host "  Updated in place."
+            $action = 'patched'
         }
         else {
             Write-Host "  Would update in place."
+            $action = 'would patch'
         }
     }
     else {
@@ -155,6 +158,6 @@ foreach ($file in $definitionFiles) {
 Write-Host ""
 $summary | Format-Table -AutoSize
 
-if ($summary | Where-Object { $_.Action -in @('create', 'new version') }) {
+if ($summary | Where-Object { $_.Action -in @('created', 'new version') }) {
     Write-Host "Run the workflow on demand and confirm its history before enabling scheduling."
 }

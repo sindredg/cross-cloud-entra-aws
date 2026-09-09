@@ -18,7 +18,7 @@ Display name of the workflow to export.
 Object ID of the workflow to export. Use instead of -DisplayName.
 
 .PARAMETER OutFile
-Path of the JSON file to write. Defaults to a name derived from the category.
+Path of the JSON file to write. Defaults to ./local/<category>.json, including with -Templatize.
 
 .PARAMETER Templatize
 Replaces group, access package, and assignment policy IDs with placeholders.
@@ -28,11 +28,12 @@ Required before committing an export.
 Optional tenant to sign in to.
 
 .EXAMPLE
-./export.ps1 -DisplayName 'Onboard cross-cloud joiner' -Templatize
-Writes ./workflows/joiner.example.json with no tenant object IDs.
+./export.ps1 -DisplayName 'CrossCloud Joiner' -Templatize -OutFile ./workflows/joiner.example.json
+Writes a committable template with no tenant object IDs. -OutFile is needed;
+the default stays under local/ even when templatizing.
 
 .EXAMPLE
-./export.ps1 -DisplayName 'Onboard cross-cloud joiner'
+./export.ps1 -DisplayName 'CrossCloud Joiner'
 Writes ./local/joiner.json with the real IDs for inspection. Git ignores local/.
 #>
 [CmdletBinding(DefaultParameterSetName = 'ByDisplayName')]
