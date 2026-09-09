@@ -171,6 +171,7 @@ function Resolve-AccessPackagePolicyId {
 
     if (-not $policy) {
         $available = ($policies | ForEach-Object { "'$($_.displayName)'" }) -join ', '
+        if (-not $available) { $available = '(none; the package has no assignment policies)' }
         throw "Access package '$packageName' has no assignment policy named '$policyName'. Available policies: $available."
     }
 
