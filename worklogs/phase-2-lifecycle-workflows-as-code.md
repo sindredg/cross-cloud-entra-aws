@@ -2,6 +2,8 @@
 
 **Date:** 2026-09-03
 
+**Historical tooling:** The helpers and unvalidated Mover/Leaver templates described below were retired on 2026-09-10. The observations remain unchanged; these are no longer current deployment instructions. See the [reference and rebuild scope](../entra/lifecycle-workflows/README.md) and [ADR-023](../decisions.md#adr-023-build-an-aws-operations-lab-with-governed-workforce-access).
+
 ## Goal
 
 Deploy the Joiner, Mover, and Leaver workflows from files in this repository instead of the portal, without committing a single tenant object ID.

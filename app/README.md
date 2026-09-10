@@ -1,4 +1,6 @@
-# Private application target
+# Historical private application target
+
+This directory still contains the previous anonymous target, not the planned SSO/monitoring service. See the [roadmap](../docs/roadmap.md) and [ADR-023](../decisions.md#adr-023-build-an-aws-operations-lab-with-governed-workforce-access). Its image and Terraform are preserved for reference; the new API, RDS, and Grafana configuration are not implemented yet.
 
 Grafana OSS, published through Microsoft Entra Private Access and reachable only
 from the private network connector.
@@ -14,7 +16,7 @@ to obtain a public Let's Encrypt certificate, which a destination with no public
 DNS record cannot do; the OIDC and SCIM layers are the duplicate scope ADR-016
 removed from this project. See ADR-020.
 
-## Deploy
+## Previous deployment procedure
 
 The target subnet has no internet path, so the image must be mirrored into the
 project ECR repository before the ECS service can place a task:

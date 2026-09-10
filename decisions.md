@@ -2,7 +2,7 @@
 
 Record decisions as Decision, Why, and Alternatives with documentation links. Keep superseded entries as history, not current implementation requirements.
 
-Current scope: [lifecycle and Private Access](#adr-016-focus-on-lifecycle-and-private-access), a [minimal footprint for one private target](#adr-017-size-infrastructure-for-one-private-target), and [Grafana as that target](#adr-020-reuse-grafana-from-the-iam-lab-as-the-private-target-without-its-access-layers). Existing federation, SCIM, and permission sets remain in use. [ADR-022](#adr-022-conclude-infrastructure-dependent-validation-after-the-reachability-proof) closes the infrastructure-dependent work and states what that leaves unproven.
+Current direction: [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access) combines an AWS operations lab with access packages and Joiner/Mover/Leaver validation. The [roadmap](docs/roadmap.md) separates historical evidence, repository cleanup, and future implementation. Earlier entries remain decision history.
 
 ## ADR-001: Build the project in verified phases
 
@@ -273,7 +273,7 @@ A portfolio project should demonstrate informed risk decisions as well as secure
 
 ## ADR-016: Focus on lifecycle and Private Access
 
-**Status:** Accepted
+**Status:** Superseded for future work by [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access)
 **Date:** 2026-09-04
 
 ### Decision
@@ -293,7 +293,7 @@ Federation is already demonstrated here; OIDC, OAuth, and Conditional Access hav
 
 ## ADR-017: Size infrastructure for one private target
 
-**Status:** Accepted
+**Status:** Superseded for future work by [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access)
 **Date:** 2026-09-04
 
 ### Decision
@@ -316,7 +316,7 @@ The target exists to prove governed private reachability. A single target and a 
 
 ## ADR-019: Run the private target on ARM Fargate behind interface endpoints
 
-**Status:** Accepted
+**Status:** Superseded for future work by [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access)
 **Date:** 2026-09-04
 
 **Supersedes:** the ADR-017 decision to defer the hosting model selection.
@@ -348,7 +348,7 @@ The endpoints are what keep the design honest. The connector's outbound allowlis
 
 ## ADR-020: Reuse Grafana from the IAM lab as the private target, without its access layers
 
-**Status:** Accepted
+**Status:** Superseded for future work by [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access)
 **Date:** 2026-09-04
 
 ### Decision
@@ -400,7 +400,7 @@ A joined VM obtains a PRT at Windows sign-in and acquires tokens silently. It al
 
 ## ADR-022: Conclude infrastructure-dependent validation after the reachability proof
 
-**Status:** Accepted
+**Status:** Superseded for future work by [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access)
 **Date:** 2026-09-09
 
 ### Decision
@@ -433,3 +433,40 @@ Both would be settled by one test window. Set `enable_private_access` to `true`,
 - Mark Phases 6 and 7 complete on the identity results alone. Rejected: the reachability halves are genuinely untested, and a checklist that hides that is worth less than one that states it.
 - Restructure the footprint to make rebuilds cheap, by moving ECR outside the gate and publishing an FQDN segment through Service Connect. Rejected: it only pays off across repeated deployments, which this decision rules out.
 
+## ADR-023: Build an AWS operations lab with governed workforce access
+
+**Status:** Accepted direction; implementation pending
+**Date:** 2026-09-10
+**Supersedes:** the exclusive lifecycle scope of ADR-016, the single-target future topology of ADR-017/019, the future anonymous-Grafana direction of ADR-020, and the no-rebuild decision in ADR-022.
+**Amends:** ADR-004: validate small governance operations manually/on demand before automating them.
+
+### Decision
+
+Build a minimal ECS Fargate API backed by RDS PostgreSQL, with Grafana providing operational dashboards and failure diagnosis. Keep Grafana private through Entra Private Access and add native Entra SSO for application roles. Run short lab windows, with stable private DNS and a proposed internal ALB. Separate retained identity/foundation resources from disposable infrastructure before rebuilding.
+
+Access packages and synthetic Joiner, Mover, and Leaver personas remain required outcomes. Define package resource roles, ownership, approval/expiry policies, persona behavior, and failure recovery first. Validate operations against the running platform, then implement small repeatable automation. Packages govern assigned application groups; existing dynamic AWS role groups retain attribute-based membership.
+
+Remove the custom Lifecycle Workflow deploy/export/common helpers and unvalidated Mover/Leaver templates from active code. Preserve the unchanged Joiner definition as a historical reference and retain worklogs, screenshots, and private local exports. Do not import the unmerged entitlement tooling from closed PRs #5/#6 as the replacement.
+
+Repository cleanup makes no tenant changes. Inventory workflows, schedules, packages, policies, assignments, and personas before removing only unused/incomplete project resources. Preserve validated baseline/Joiner resources and administrative recovery dependencies.
+
+The tracked [roadmap](docs/roadmap.md) defines the phases and acceptance criteria. The existing Terraform and anonymous Grafana image remain the previous implementation until later changes replace them; this decision does not claim the new platform or governance automation is deployed.
+
+### Why
+
+The project needs useful AWS operational behavior as well as identity outcomes. A small database-backed service provides deployment, scaling, and recovery exercises without a large application backlog. Access packages and personas then govern a resource that has meaningful application permissions.
+
+The old automation showed some deployment behavior but did not validate the full Mover/Leaver outcomes. Removing that active implementation allows a focused replacement while preserving what was actually demonstrated.
+
+### Alternatives
+
+- Remove access packages and JML from scope. Rejected: governed lifecycle access remains a project goal.
+- Keep patching the previous generic framework or import the closed entitlement-tooling PRs. Rejected in favor of validating the required operations and failure cases before rebuilding their automation.
+- Keep Grafana as an anonymous reachability-only target. Rejected for the next build: Private Access and application roles should both have observable behavior.
+- Build a queue/worker platform or a full observability stack immediately. Deferred until the minimal API/RDS/Grafana lab and required governance scenarios work.
+
+### Consequences
+
+The previous Private Access denial surface and application reachability across a role move remain historical evidence gaps. Workflow/task success, package delivery, SCIM propagation, application permissions, and existing-session behavior are separate measurements.
+
+Private Access, entitlement management, and Lifecycle Workflows retain their licensing prerequisites. A single connector, NAT gateway, RDS instance, and initial task per service are lab availability compromises. Rebuilds must preserve AWS administrative access, images, and state recovery.
