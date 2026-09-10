@@ -1,64 +1,66 @@
-# Cross-Cloud Identity Lifecycle with Microsoft Entra Suite and AWS
+# AWS application platform with Microsoft Entra and Grafana
 
-Workforce lifecycle automation and identity-based access to a private AWS application. Follow a synthetic worker from baseline access before first sign-in, through a role change, to offboarding across Entra and AWS IAM Identity Center.
+An AWS infrastructure and identity lab: operate a minimal ECS application backed by RDS, monitor it with private Grafana, and govern workforce access through Microsoft Entra.
 
-## Scope
+The next build combines two connected areas:
 
-- **Lifecycle:** reusable Joiner, Mover, and Leaver definitions; access packages; attribute-driven groups; SCIM; and measured access-removal delays.
-- **Private Access:** one private target, a Private Network Connector, and per-app access governed through an access package.
-- **Supporting infrastructure:** the existing IAM Identity Center federation and Terraform-managed permission sets remain in use.
+- **AWS operations:** Fargate deployments, PostgreSQL, useful dashboards, scaling, failure diagnosis, recovery, and repeatable teardown.
+- **Identity governance:** access packages, synthetic Joiner/Mover/Leaver personas, attribute-driven AWS roles, SCIM, Entra Private Access, and Grafana SSO.
 
-## Target architecture
+Access packages and all three personas remain in scope. The previous deployment helpers and unvalidated Mover/Leaver templates have been removed so they can be replaced against a defined access model and acceptance criteria. The validated Joiner definition remains a [historical reference](entra/lifecycle-workflows/README.md).
+
+## Current status
+
+The AWS lab footprint is down. The repository still contains the previous private-target infrastructure and anonymous Grafana image; the ECS API, RDS, Grafana SSO, dashboards, and replacement governance automation are **planned, not implemented**.
+
+The [roadmap](docs/roadmap.md) is the tracked implementation plan. [ADR-023](decisions.md#adr-023-build-an-aws-operations-lab-with-governed-workforce-access) records the scope reset. Live AWS/Entra inventory must be checked before rebuilding or cleaning up tenant resources.
+
+## Planned architecture
 
 ```mermaid
 flowchart LR
-    Worker["Synthetic worker<br/>Joiner · Mover · Leaver"]
-    Client["Test device<br/>Global Secure Access client"]
-
-    subgraph Entra["Microsoft Entra"]
-        Lifecycle["Lifecycle Workflows"]
-        Attributes["Account and role attributes"]
-        Groups["Dynamic AWS role groups"]
-        Packages["Access packages<br/>Governed app assignment"]
-        PrivateAccess["Entra Private Access<br/>Per-app assignment"]
-    end
-
-    subgraph AWS["AWS"]
-        IdentityCenter["IAM Identity Center<br/>Permission sets"]
-        Connector["Windows Server connector<br/>Approved outbound connectivity"]
-        Target["Grafana on ARM Fargate<br/>No route off the VPC"]
-    end
-
-    Worker --> Lifecycle
-    Lifecycle --> Attributes
-    Attributes --> Groups
-    Groups -->|"SCIM membership"| IdentityCenter
-    Lifecycle -->|"Assignment / removal tasks"| Packages
-    Packages -->|"Governed access"| PrivateAccess
-    Client --> PrivateAccess
-    Connector -->|"Connector-initiated outbound tunnel"| PrivateAccess
-    Connector -->|"Private application port"| Target
+    Personas["Joiner / Mover / Leaver"] --> Lifecycle["Validated lifecycle workflows"]
+    Lifecycle --> Packages["Access packages<br/>Baseline + elevated"]
+    Packages --> AppGroups["Assigned application groups"]
+    AppGroups --> PA["Entra Private Access"]
+    AppGroups --> SSO["Grafana Entra SSO roles"]
+    Attributes["Workforce attributes"] --> AWSGroups["Dynamic AWS groups"]
+    AWSGroups -->|"SCIM"| IC["IAM Identity Center"]
+    Client["Entra-joined client"] --> PA
+    Connector["Windows connector"] -->|"Outbound tunnel"| PA
+    Connector --> ALB["Internal HTTPS ALB"]
+    ALB --> Grafana["Grafana on Fargate"]
+    ALB --> API["Minimal API on Fargate"]
+    SSO -. "Application authorization" .-> Grafana
+    API --> RDS["Private RDS PostgreSQL"]
+    API --> CW["CloudWatch metrics and logs"]
+    AWS["AWS service telemetry"] --> CW
+    Grafana -->|"Query with task IAM role"| CW
 ```
 
-The diagram shows the access boundaries. The Private Access path is proven end to end; the AWS footprint is torn down between test windows. Existing Entra federation provides AWS sign-in. SCIM owns workforce users and AWS group memberships; Terraform owns permission sets and account assignments. Application reachability is tested separately from application authentication and existing-session termination.
+Private Access controls network reachability; Grafana SSO controls application roles. Access packages govern assigned application-group membership. Dynamic AWS role groups keep their existing attribute-based ownership. Lab teardown must preserve administrative access and retained foundation resources.
 
-## Implemented
+## Existing evidence
 
-| Phase | Outcome | Evidence |
+These are historical results, not a claim that the environment is currently deployed.
+
+| Area | Observed result | Evidence |
 | --- | --- | --- |
-| 1 | Entra federation, SCIM provisioning, and temporary AWS console/CLI credentials | [worklog](worklogs/phase-1-entra-aws-federation.md) |
-| 2 | Dynamic groups and a synthetic Joiner receiving baseline access before first sign-in | [worklog](worklogs/phase-2-identity-lifecycle-joiner.md) |
-| 2 | Reusable Graph JSON workflow deployment; tenant values kept in ignored local copies | [worklog](worklogs/phase-2-lifecycle-workflows-as-code.md) |
-| 3 | Three Terraform-managed permission sets and account assignments | [worklog](worklogs/phase-3-terraform-identity-center.md) |
-| 4 | Private VPC footprint with Grafana on ARM Fargate, reachable only from the connector | [worklog](worklogs/phase-4-private-access-footprint.md) |
-| 5 | Grafana reached over Entra Private Access from an Entra-joined client, no VPN or peering | [worklog](worklogs/phase-5-private-access-assignment.md) |
+| Federation | Entra federation, SCIM, and temporary AWS console/CLI credentials | [Phase 1](worklogs/phase-1-entra-aws-federation.md) |
+| Joiner | Baseline access package delivered and AWS provisioning observed before first interactive sign-in | [Phase 2 Joiner](worklogs/phase-2-identity-lifecycle-joiner.md) |
+| Workflow tooling | Definitions deployed; Mover package swap and Leaver execution were not validated; tooling now retired | [Phase 2 tooling](worklogs/phase-2-lifecycle-workflows-as-code.md) |
+| AWS roles | Three Terraform-managed permission sets and account assignments | [Phase 3](worklogs/phase-3-terraform-identity-center.md) |
+| Infrastructure | Private VPC, connector, and ARM Fargate Grafana target | [Phase 4](worklogs/phase-4-private-access-footprint.md) |
+| Private Access | Grafana reached from an Entra-joined client with no VPN or peering to AWS | [Phase 5](worklogs/phase-5-private-access-assignment.md) |
 
-## Remaining work
+The previous unassigned-client denial test and application reachability across a role move remain unproven. The new roadmap includes explicit access-layer tests and JML evidence.
 
-| Phase | Scope |
-| --- | --- |
-| 0–2 | Close readiness gaps and capture Joiner timing evidence |
-| 4 | Register the connector against the deployed target and verify the reachability boundary |
-| 5 | Run the denial case for an unassigned identity, and move assignment into an access package |
-| 6 | Validate Mover changes across AWS and private-access entitlements |
-| 7 | Validate Leaver behavior, existing sessions, evidence, and teardown |
+## Next delivery steps
+
+1. Inventory access/state and define the package/persona ownership model.
+2. Separate retained resources from disposable lab infrastructure.
+3. Build the minimal ECS/RDS workload and private Grafana with SSO and dashboards.
+4. Validate baseline/elevated access packages and the three personas against the working platform, then automate the proven operations.
+5. Demonstrate failures, scaling, recovery, CI deployment, and teardown/rebuild.
+
+Prepare locally, deploy for short lab windows, and record the retained costs afterward. Start with the [roadmap](docs/roadmap.md), not the old worklogs' deployment commands.
