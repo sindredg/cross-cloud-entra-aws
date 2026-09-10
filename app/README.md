@@ -18,16 +18,19 @@ removed from this project. See ADR-020.
 
 ## Previous deployment procedure
 
-The target subnet has no internet path, so the image must be mirrored into the
-project ECR repository before the ECS service can place a task:
+This procedure is historical. It read both the repository URL and the running
+task's private address from the combined Terraform root, which no longer exists:
+the [identity root](../terraform/README.md) owns retained access only, and the
+lab root that will own images and tasks is not implemented yet.
+
+The target subnet had no internet path, so the image had to be mirrored into the
+project ECR repository before the ECS service could place a task. The helper now
+takes that repository explicitly and fails before login if it is missing:
 
 ```bash
-./build-and-push.sh
+ECR_REPOSITORY_URL='<existing-ecr-repository-url>' ./build-and-push.sh
 ```
 
-Then read the running task's private address and publish it as the application
-segment:
-
-```bash
-terraform -chdir=../terraform output -raw private_access_application_segment_lookup
-```
+The running task's private address was then published as an IP application
+segment. The planned replacement puts the service behind an internal ALB with a
+stable private hostname, so there is no task IP to republish.

@@ -470,3 +470,46 @@ The old automation showed some deployment behavior but did not validate the full
 The previous Private Access denial surface and application reachability across a role move remain historical evidence gaps. Workflow/task success, package delivery, SCIM propagation, application permissions, and existing-session behavior are separate measurements.
 
 Private Access, entitlement management, and Lifecycle Workflows retain their licensing prerequisites. A single connector, NAT gateway, RDS instance, and initial task per service are lab availability compromises. Rebuilds must preserve AWS administrative access, images, and state recovery.
+
+## ADR-024: Separate Terraform roots by resource lifecycle
+
+**Status:** Accepted; identity root implemented, foundation and lab roots pending
+**Date:** 2026-09-10
+**Implements:** the lifecycle separation required by [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access) and Phase 1 of the [roadmap](docs/roadmap.md).
+
+### Decision
+
+Split Terraform into one root per resource lifetime, each with its own state:
+
+| Root | Owns | Lifetime |
+| --- | --- | --- |
+| `terraform/identity/` | Permission sets and account assignments | Retained |
+| `terraform/foundation/` | ECR images and reusable DNS/certificate resources | Retained between lab windows |
+| `terraform/lab/` | VPC, connector, internal ALB, NAT, ECS services, RDS | Per lab window |
+
+This change implements the identity root only. It moves the existing configuration and its state together, keeps the `module.identity_center` call name, and therefore preserves every resource address; no `moved` blocks, `state mv`, or imports are involved. The private-target module call, its variables, its locals, and its three outputs leave the active configuration. `modules/private_access/` stays as reference code that no root calls.
+
+The old `enable_private_access` switch is removed with it. Lab teardown becomes destroying a separate root rather than flipping a flag inside the root that also owns AWS login.
+
+### Why
+
+One root and one state file made the blast radius of a teardown the whole project. A mistyped destroy, or a flag flip plus apply, could remove the permission sets and account assignments that provide AWS administrative access — the exact failure the roadmap's Phase 1 exit criterion rules out. Separate state is the boundary that makes that impossible rather than merely discouraged; a flag in a shared root is a convention, not a control.
+
+Splitting by lifetime rather than by service also matches how the resources are actually operated: identity is edited rarely and must survive, images must outlive a window, and lab infrastructure is meant to be disposable.
+
+Doing the identity move first, alone, keeps it verifiable. Address preservation means the acceptance test is a plan reporting zero additions, changes, and deletions, which is unambiguous in a way that a combined refactor would not be.
+
+### Alternatives
+
+- Keep one root and rely on `enable_private_access` and targeted applies. Rejected: the retained and disposable resources still share one state, so teardown mistakes stay possible and `-target` is an error-prone manual control.
+- Use workspaces instead of separate roots. Rejected: workspaces vary inputs for one configuration; here the configurations and their lifetimes genuinely differ.
+- Split identity, foundation, and lab in a single change. Rejected: it would mix a state relocation with new resource definitions, and the zero-diff proof would no longer isolate the move.
+- Move to a remote backend at the same time. Rejected: backend migration should not be combined with a refactor. It remains a separate change, with its bootstrap outside routine lab teardown.
+
+### Consequences
+
+State stays local and per root, and is machine-local: a checkout on another machine, or one whose state predates this change, needs the state relocated rather than a fresh apply. Applying the identity root into an empty state would try to create duplicate permission sets.
+
+Cross-root values must become explicit inputs. The lab root will need retained identifiers from foundation, and the app image helper no longer reads a repository URL from Terraform output; it takes `ECR_REPOSITORY_URL` explicitly. More roots also mean more init/plan invocations and no single whole-project plan.
+
+`modules/private_access/` remains uncalled reference code until the lab root replaces it. Foundation and lab ownership boundaries — particularly private hosted-zone associations that depend on a disposable VPC — still need deciding before those roots are written.

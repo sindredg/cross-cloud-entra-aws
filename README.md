@@ -11,7 +11,7 @@ Access packages and all three personas remain in scope. The previous deployment 
 
 ## Current status
 
-The AWS lab footprint is down. The repository still contains the previous private-target infrastructure and anonymous Grafana image; the ECS API, RDS, Grafana SSO, dashboards, and replacement governance automation are **planned, not implemented**.
+The AWS lab footprint is down. The active [Terraform root](terraform/README.md) now holds retained identity resources only, separated from disposable lab infrastructure. The previous private-target module and anonymous Grafana image remain as reference code; the ECS API, RDS, Grafana SSO, dashboards, and replacement governance automation are **planned, not implemented**.
 
 The [roadmap](docs/roadmap.md) is the tracked implementation plan. [ADR-023](decisions.md#adr-023-build-an-aws-operations-lab-with-governed-workforce-access) records the scope reset. Live AWS/Entra inventory must be checked before rebuilding or cleaning up tenant resources.
 
