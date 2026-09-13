@@ -5,15 +5,15 @@ Run Terraform from an explicit root. This directory is a container, not a root.
 | Root | Owns | Lifetime |
 | --- | --- | --- |
 | [`identity/`](identity/) | IAM Identity Center permission sets and account assignments | Retained. Destroying it removes AWS administrative access. |
-| `foundation/` | ECR images and reusable DNS/certificate resources | Retained between lab windows. Not implemented yet. |
-| `lab/` | VPC, connector, internal ALB, NAT, ECS services, RDS | Created and destroyed per lab window. Not implemented yet. |
+| `foundation/` | ECR images and reusable DNS/certificate resources | Not planned: no additional AWS resources will be added. |
+| `lab/` | VPC, connector, internal ALB, NAT, ECS services, RDS | Not planned: no additional AWS resources will be added. |
 
 Each root keeps its own state, so destroying the lab cannot delete the login path. This implements the first Phase 1 item in the [roadmap](../docs/roadmap.md) and the separation recorded in [ADR-024](../decisions.md#adr-024-separate-terraform-roots-by-resource-lifecycle).
 
 ## Modules
 
 - `modules/identity_center/` — called by the identity root.
-- `modules/private_access/` — reference code from the previous combined footprint. **No active root calls it.** The lab root will replace its combined lifecycle rather than reuse it; see the roadmap's network section.
+- `modules/private_access/` — reference code from the previous combined footprint. **No active root calls it.** It is kept for reference only; no lab root is planned to replace it.
 
 ## State
 
