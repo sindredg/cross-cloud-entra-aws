@@ -1,515 +1,320 @@
-# Cross-Cloud Identity with Microsoft Entra Suite and AWS planning decisions
+# Architecture decisions
 
-Record decisions as Decision, Why, and Alternatives with documentation links. Keep superseded entries as history, not current implementation requirements.
+Each record states the decision, why, and the alternatives. Superseded records stay short as history.
 
-Current direction: [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access) combines an AWS operations lab with access packages and Joiner/Mover/Leaver validation. The [roadmap](docs/roadmap.md) separates historical evidence, repository cleanup, and future implementation. Earlier entries remain decision history.
+| ADR | Decision | Status |
+| --- | --- | --- |
+| [001](#adr-001-build-the-project-in-verified-phases) | Build in verified phases | Accepted |
+| [002](#adr-002-use-aws-ecs-with-fargate-for-application-containers) | ECS Fargate for protocol apps | Superseded |
+| [003](#adr-003-keep-one-vm-for-the-entra-private-access-connector) | One connector VM | Superseded |
+| [004](#adr-004-split-provisioning-by-platform-boundary) | Split provisioning by platform | Accepted |
+| [005](#adr-005-use-iam-identity-center-for-human-aws-access) | IAM Identity Center for human access | Accepted |
+| [006](#adr-006-use-local-terraform-state) | Local Terraform state | Accepted |
+| [007](#adr-007-use-architecture-level-terraform-modules) | Architecture-level modules | Superseded |
+| [008](#adr-008-inspect-tokens-without-persisting-credentials) | Token inspector views | Superseded |
+| [009](#adr-009-use-a-descriptive-project-title) | Descriptive project title | Accepted |
+| [010](#adr-010-use-jml-as-the-project-storyline) | JML as the storyline | Accepted |
+| [011](#adr-011-federate-entra-id-with-iam-identity-center-and-provision-through-scim) | SAML federation and SCIM | Accepted |
+| [012](#adr-012-treat-prerequisites-as-phase-0) | Prerequisites as Phase 0 | Superseded |
+| [013](#adr-013-remove-the-google-cloud-draft) | Remove the Google Cloud draft | Accepted |
+| [014](#adr-014-evaluate-security-controls-proportionately) | Proportionate security controls | Accepted |
+| [016](#adr-016-focus-on-lifecycle-and-private-access) | Focus on lifecycle and Private Access | Accepted |
+| [017](#adr-017-size-infrastructure-for-one-private-target) | One private target | Historical |
+| [019](#adr-019-run-the-private-target-on-arm-fargate-behind-interface-endpoints) | ARM Fargate target behind endpoints | Historical |
+| [020](#adr-020-reuse-grafana-as-an-anonymous-private-target) | Anonymous Grafana target | Historical |
+| [021](#adr-021-use-an-entra-joined-vm-as-the-private-access-test-client) | Entra-joined test client | Accepted |
+| [022](#adr-022-stop-rebuilding-the-private-aws-footprint) | Stop rebuilding the AWS footprint | Accepted |
+| [023](#adr-023-validate-access-packages-and-jml-before-automating) | Validate packages and JML before automating | Accepted |
+| [024](#adr-024-separate-the-identity-terraform-root) | Separate the identity Terraform root | Accepted |
 
 ## ADR-001: Build the project in verified phases
 
-**Status:** Accepted
-**Date:** 2026-09-01
+**Status:** Accepted | **Date:** 2026-09-01
 
-### Decision
+**Decision:** Build one phase at a time. Meet the exit criteria and write a redacted worklog before you start the next phase.
 
-Build one phase at a time. Complete the documented exit criteria, write a redacted worklog, and mark the phase `Done` before starting the next phase.
+**Why:** Small phases limit cost and security mistakes and make failures easier to isolate.
 
-### Why
-
-The project combines unfamiliar AWS access controls, billable networking, Terraform, four applications, and Entra Suite. Small phases limit cost and security mistakes and make failures easier to diagnose.
-
-### Alternatives
-
-- Build the full environment in one pass. Rejected because one plan would mix identity bootstrap, networking, compute, and application failures. See the [Terraform core workflow](https://developer.hashicorp.com/terraform/intro/core-workflow).
-- Use Terraform workspaces as implementation phases. Rejected because workspaces separate state instances; they do not model a delivery sequence. See [Terraform workspaces](https://developer.hashicorp.com/terraform/language/state/workspaces).
+| Alternative | Why not |
+| --- | --- |
+| Build everything in one pass | Mixes identity, network, and compute failures in one plan. See [Terraform core workflow](https://developer.hashicorp.com/terraform/intro/core-workflow). |
+| Use Terraform workspaces as phases | Workspaces separate state, not delivery order. See [workspaces](https://developer.hashicorp.com/terraform/language/state/workspaces). |
 
 ## ADR-002: Use AWS ECS with Fargate for application containers
 
-**Status:** Superseded by [ADR-017](#adr-017-size-infrastructure-for-one-private-target)
-**Date:** 2026-09-01
+**Status:** Superseded by [ADR-017](#adr-017-size-infrastructure-for-one-private-target) | **Date:** 2026-09-01
 
-### Decision
-
-Run `saml-web`, `oidc-web`, `oauth-api`, and `private-web` as Linux containers on Amazon ECS with AWS Fargate. Do not deploy the same applications to multiple clouds.
-
-### Why
-
-Fargate removes application-host VM management while retaining private VPC networking, security groups, load balancer integration, task IAM roles, and container-level deployment behavior. The AWS target also creates a clear cross-cloud story: Microsoft Entra protects AWS workloads.
-
-### Alternatives
-
-- [Google Cloud Run](https://cloud.google.com/run/docs/overview). Rejected after the project changed from a GCP foundation to an AWS learning objective.
-- [Amazon ECS on EC2](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html). Rejected because managing container hosts does not add value to the identity scenarios.
-- [Amazon EKS](https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html). Rejected because Kubernetes adds cluster operations that are outside the project goal.
+**Decision:** Run the planned protocol demo apps as Linux containers on ECS Fargate.
 
 ## ADR-003: Keep one VM for the Entra Private Access connector
 
-**Status:** Superseded by [ADR-017](#adr-017-size-infrastructure-for-one-private-target)
-**Date:** 2026-09-01
+**Status:** Superseded by [ADR-017](#adr-017-size-infrastructure-for-one-private-target) | **Date:** 2026-09-01
 
-### Decision
-
-Use one private Windows Server EC2 instance for the Microsoft Entra Private Network Connector. Keep all application workloads in Fargate. Do not use Guacamole.
-
-### Why
-
-The connector is a Windows Server service that creates outbound tunnels to Microsoft and needs network access to the private application. It is not an application container. Guacamole would add another remote-access layer and obscure the Global Secure Access client flow.
-
-### Alternatives
-
-- Run the connector as a container. Rejected because Microsoft documents the connector as a Windows Server agent. See [Microsoft Entra private network connectors](https://learn.microsoft.com/en-us/entra/global-secure-access/concept-connectors).
-- Use [Apache Guacamole](https://guacamole.apache.org/doc/gug/). Rejected because browser-delivered remote desktop is not required to inspect SAML, OIDC, OAuth, or Private Access.
-- Host each application on an EC2 VM. Rejected in favor of [Fargate task networking](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-task-networking.html).
+**Decision:** Run the private network connector on one Windows Server EC2 instance. Microsoft supports the connector only as a [Windows Server agent](https://learn.microsoft.com/en-us/entra/global-secure-access/concept-connectors), not a container.
 
 ## ADR-004: Split provisioning by platform boundary
 
-**Status:** Accepted
-**Date:** 2026-09-01
+**Status:** Accepted | **Date:** 2026-09-01 | **Amended by:** [ADR-023](#adr-023-validate-access-packages-and-jml-before-automating)
 
-### Decision
+**Decision:**
 
-Use Terraform for AWS, Microsoft Graph Bicep for supported Entra application resources, and idempotent Microsoft Graph or PowerShell automation for Entra Suite resources that Bicep does not support. Use portals only for bootstrap, consent, connector enrollment, and validation steps that are unsuitable for automation.
+- Terraform for AWS.
+- Microsoft Graph Bicep for supported Entra resources.
+- Idempotent Graph or PowerShell automation for Entra resources that Bicep doesn't support.
+- Portals only for bootstrap, consent, connector enrollment, and validation.
 
-### Why
+**Why:** Each tool stays in its strongest control plane. Tenant configuration stays out of AWS Terraform state.
 
-Each tool remains within its strongest control plane. This split avoids forcing tenant configuration into the AWS Terraform state and avoids pretending that Graph Bicep covers every Entra Suite API.
-
-### Alternatives
-
-- Use Terraform for AWS and Entra in one state. Rejected because it couples separate lifecycles and expands the sensitive state boundary. See the [Microsoft Entra ID Terraform provider](https://registry.terraform.io/providers/hashicorp/azuread/latest/docs).
-- Use Bicep for every Entra resource. Rejected because the extension supports a limited resource set and has deployment limitations. See the [Microsoft Graph Bicep overview](https://learn.microsoft.com/en-us/graph/templates/bicep/overview-bicep-templates-for-graph) and [feature limitations](https://learn.microsoft.com/en-us/graph/templates/bicep/limitations).
-- Configure everything in the portal. Rejected because manual configuration is difficult to review, reproduce, and clean up.
+| Alternative | Why not |
+| --- | --- |
+| Terraform for AWS and Entra in one state | Couples lifecycles and widens the sensitive state boundary. |
+| Bicep for every Entra resource | Graph Bicep supports a [limited resource set](https://learn.microsoft.com/en-us/graph/templates/bicep/limitations). |
+| Portal only | Hard to review, reproduce, and clean up. |
 
 ## ADR-005: Use IAM Identity Center for human AWS access
 
-**Status:** Accepted
-**Date:** 2026-09-01
+**Status:** Accepted | **Date:** 2026-09-01
 
-### Decision
+**Decision:** Protect root with MFA and create no root access keys. Use IAM Identity Center temporary credentials for console and CLI access. Keep the existing IAM user until the new path is tested.
 
-Protect the AWS root user with MFA, create no root access keys, and use root only for root-only tasks. Use IAM Identity Center and temporary credentials for normal console and CLI access. Keep the existing IAM user until the replacement access path is tested.
+**Why:** Temporary credentials reduce leaked-key risk. A tested replacement before removal prevents lockout.
 
-### Why
+| Alternative | Why not |
+| --- | --- |
+| Use root daily | Against [root user best practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-best-practices.html). |
+| Keep long-lived IAM access keys | AWS recommends [temporary credentials](https://docs.aws.amazon.com/singlesignon/latest/userguide/howtogetcredentials.html). |
+| Delete the IAM user immediately | Removes the recovery path before the new one works. |
 
-A staged move to temporary credentials reduces the risk of account lockout and leaked long-lived access keys. Preserving the existing administrative path until both console and CLI federation are verified provides a controlled rollback.
+## ADR-006: Use local Terraform state
 
-### Alternatives
+**Status:** Accepted | **Date:** 2026-09-01
 
-- Use root for daily work. Rejected by [AWS root-user best practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-best-practices.html).
-- Continue using a long-lived IAM-user access key. Rejected after safe migration because AWS recommends temporary credentials where possible. See [IAM Identity Center credentials](https://docs.aws.amazon.com/singlesignon/latest/userguide/howtogetcredentials.html).
-- Delete the current IAM user immediately. Rejected because access must be tested before removing the existing recovery path.
+**Decision:** Keep Terraform state on the trusted workstation. Ignore state, plans, and private variable files. Keep secrets out of Terraform.
 
-## ADR-006: Use local Terraform state for the project
+**Why:** This is a single-user lab. A remote backend adds bootstrap resources before they're needed.
 
-**Status:** Accepted
-**Date:** 2026-09-01
-
-### Decision
-
-Use local Terraform state on the trusted development machine. Ignore state, plans, and private variable files. Do not put secret values into Terraform inputs or resources.
-
-### Why
-
-This is a single-user learning project rather than a shared infrastructure environment. A remote backend would add bootstrap resources and access policy before the AWS account foundation is established.
-
-### Alternatives
-
-- Use the [Terraform S3 backend](https://developer.hashicorp.com/terraform/language/backend/s3). Deferred until collaboration, automation, or state recovery requirements justify it.
-- Use [HCP Terraform](https://developer.hashicorp.com/terraform/cloud-docs). Rejected for the initial project because it introduces another service and access boundary.
+| Alternative | Why not |
+| --- | --- |
+| [S3 backend](https://developer.hashicorp.com/terraform/language/backend/s3) | Deferred until collaboration or recovery requires it. |
+| [HCP Terraform](https://developer.hashicorp.com/terraform/cloud-docs) | Adds another service and access boundary. |
 
 ## ADR-007: Use architecture-level Terraform modules
 
-**Status:** Superseded by [ADR-017](#adr-017-size-infrastructure-for-one-private-target)
-**Date:** 2026-09-01
+**Status:** Superseded by [ADR-017](#adr-017-size-infrastructure-for-one-private-target) | **Date:** 2026-09-01
 
-### Decision
-
-Create modules for coherent units such as `network`, `ecs_service`, and `private_access_connector`. Keep single-use resources in the root unless they form a meaningful component. Put deployment inputs in private tfvars and derive names, tags, and service mappings in locals.
-
-### Why
-
-This structure provides reuse without hiding the architecture behind one-resource wrappers. It also keeps deployment-specific inputs separate from deterministic values.
-
-### Alternatives
-
-- Wrap every resource in a module. Rejected because it adds indirection without a reusable interface. See [Terraform module composition](https://developer.hashicorp.com/terraform/language/modules/develop/composition).
-- Keep every resource in the root module. Rejected because the ECS service pattern is instantiated several times.
-- Hard-code names and settings. Rejected in favor of [input variables](https://developer.hashicorp.com/terraform/language/values/variables) and [local values](https://developer.hashicorp.com/terraform/language/values/locals).
+**Decision:** Create modules only for coherent units, keep deployment inputs in private tfvars, and derive names in locals. ADR-017 keeps this guidance without the fixed module list.
 
 ## ADR-008: Inspect tokens without persisting credentials
 
-**Status:** Superseded by [ADR-016](#adr-016-focus-on-lifecycle-and-private-access)
-**Date:** 2026-09-01
+**Status:** Superseded by [ADR-016](#adr-016-focus-on-lifecycle-and-private-access) | **Date:** 2026-09-01
 
-### Decision
+**Decision:** Add session-only token inspector views to the protocol apps and never log raw tokens. ADR-016 removed the protocol apps.
 
-Add session-only protocol inspector views to the applications. Show decoded headers, claims, SAML XML, validation results, and authorization decisions. Redact authorization headers, cookies, codes, assertions, and refresh tokens from ALB and CloudWatch logs. Never display a refresh token.
+## ADR-009: Use a descriptive project title
 
-### Why
+**Status:** Accepted | **Date:** 2026-09-01
 
-Protocol visibility is a core learning objective, but raw tokens and assertions are bearer credentials. The project must show how the flows work without turning observability into credential storage.
+**Decision:** Give the project a title that names Microsoft Entra, AWS, and the identity focus. Use short, neutral resource prefixes instead of the title.
 
-### Alternatives
+**Why:** Readers understand the scope without context, and resource names stay within provider limits.
 
-- Log raw tokens and requests to CloudWatch. Rejected because logs persist and are accessible outside the active session. ALB logs already provide request metadata without full authorization headers or bodies; see [Application Load Balancer access logs](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html).
-- Use the OAuth implicit flow so tokens appear in the browser URL. Rejected because Microsoft recommends authorization code with PKCE. See the [Microsoft identity platform authorization-code flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow).
-- Hide all token data. Rejected because it would undermine the project's protocol-comparison goal.
+## ADR-010: Use JML as the project storyline
 
-## ADR-009: Use a descriptive cross-cloud project title
+**Status:** Accepted | **Date:** 2026-09-01 | **Refined by:** [ADR-023](#adr-023-validate-access-packages-and-jml-before-automating)
 
-**Status:** Accepted
-**Date:** 2026-09-01
+**Decision:** Create synthetic identities early and carry them through Joiner, Mover, and Leaver scenarios. The Joiner workflow assigns a baseline access package before first sign-in, with no user request or approval.
 
-### Decision
+**Why:** JML connects governance to observable AWS authorization outcomes.
 
-Name the project **Cross-Cloud Identity with Microsoft Entra Suite and AWS**. Use neutral, descriptive resource prefixes rather than deriving cloud resource names from the full title.
-
-### Why
-
-The title communicates the platforms and the project's identity focus to a portfolio reader without requiring prior context. Resource names remain short enough for provider limits and reusable deployments.
-
-### Alternatives
-
-- Keep a short generic project name. Rejected because it does not communicate the cross-cloud architecture or Entra Suite scope.
-- Include every protocol and governance capability in the title. Rejected because the resulting title would be difficult to scan; the README describes the detailed scope.
-
-## ADR-010: Use JML as the continuous project storyline
-
-**Status:** Accepted
-**Date:** 2026-09-01
-
-Validation scope is narrowed by [ADR-016](#adr-016-focus-on-lifecycle-and-private-access): AWS and private-access entitlements replace custom protocol-application roles.
-
-### Decision
-
-Create synthetic identities early and carry them through Joiner, Mover, and Leaver scenarios as the platform is built. The Joiner workflow automatically assigns a baseline access package through a direct-assignment policy before first sign-in. The test user does not submit a request or complete an approval. Run Mover validation when application roles and AWS access are available, and run Leaver validation during final testing.
-
-### Why
-
-Continuous JML validation connects identity governance to observable application and AWS authorization outcomes. Administrative evidence can validate most phases without repeated interactive sign-ins as the test users.
-
-### Alternatives
-
-- Add one Lifecycle Workflow near the end. Rejected because it would demonstrate an isolated feature rather than an identity lifecycle. See [What are Lifecycle Workflows?](https://learn.microsoft.com/en-us/entra/id-governance/what-are-lifecycle-workflows).
-- Require test users to request their baseline package. Rejected because baseline access should exist before first sign-in. Lifecycle Workflows can create the assignment administratively; see [access-package assignment through Lifecycle Workflows](https://learn.microsoft.com/en-us/entra/id-governance/entitlement-management-access-package-assignments).
-- Use attribute-based automatic assignment for the primary scenario. Deferred because explicit workflow execution provides clearer task history and JML evidence.
+| Alternative | Why not |
+| --- | --- |
+| One [Lifecycle Workflow](https://learn.microsoft.com/en-us/entra/id-governance/what-are-lifecycle-workflows) at the end | Shows a feature, not a lifecycle. |
+| Users request their baseline package | Baseline access must exist before first sign-in. |
+| Attribute-based automatic assignment | Deferred. Workflow runs give clearer task history. |
 
 ## ADR-011: Federate Entra ID with IAM Identity Center and provision through SCIM
 
-**Status:** Accepted
-**Date:** 2026-09-01
+**Status:** Accepted | **Date:** 2026-09-01
 
-### Decision
+**Decision:** Use Entra ID as the SAML identity provider for IAM Identity Center. Provision users and group memberships through SCIM. Manage permission sets and account assignments with Terraform. Never manage SCIM-owned identities with Terraform or Identity Store APIs.
 
-Configure Microsoft Entra ID as the external SAML identity provider for AWS IAM Identity Center. Use the Entra provisioning service and SCIM for workforce users and direct group memberships. Use Terraform for permission sets and group-to-account assignments, but do not use Terraform or AWS Identity Store mutation APIs to manage SCIM-owned identities.
+**Why:** One workforce lifecycle across both clouds, temporary credentials, and one source of truth.
 
-### Why
-
-This design provides one workforce identity lifecycle across Entra and AWS, enables temporary console and CLI credentials, and avoids two competing sources of truth for IAM Identity Center identities.
-
-### Alternatives
-
-- Use IAM users for routine AWS access. Rejected because long-lived credentials bypass the cross-cloud workforce lifecycle.
-- Maintain separate users in the IAM Identity Center directory. Rejected because duplicate identity administration weakens the JML scenario.
-- Manage SCIM-provisioned users and memberships with AWS APIs or Terraform. Rejected because it can create drift from the external identity provider. See [AWS automatic provisioning considerations](https://docs.aws.amazon.com/singlesignon/latest/userguide/provision-automatically.html).
-- Configure SAML without SCIM. Rejected because SAML authenticates the user but does not provision the users and groups IAM Identity Center requires. See [AWS external identity providers](https://docs.aws.amazon.com/singlesignon/latest/userguide/manage-your-identity-source-idp.html).
+| Alternative | Why not |
+| --- | --- |
+| IAM users | Long-lived credentials bypass the lifecycle. |
+| Separate Identity Center directory users | Duplicate administration. |
+| Manage SCIM users with AWS APIs | Causes drift. See [automatic provisioning](https://docs.aws.amazon.com/singlesignon/latest/userguide/provision-automatically.html). |
+| SAML without SCIM | Authenticates but doesn't provision. See [external identity providers](https://docs.aws.amazon.com/singlesignon/latest/userguide/manage-your-identity-source-idp.html). |
 
 ## ADR-012: Treat prerequisites as Phase 0
 
-**Status:** Superseded by [ADR-017](#adr-017-size-infrastructure-for-one-private-target)
-**Date:** 2026-09-01
+**Status:** Superseded by [ADR-017](#adr-017-size-infrastructure-for-one-private-target) | **Date:** 2026-09-01
 
-### Decision
+**Decision:** Confirm accounts, licenses, region, DNS, certificates, budget alerts, and tooling as a numbered phase. Phase 3 later moved each item to the phase that needed it.
 
-Make prerequisites and environment readiness the first numbered phase. Phase 0 confirms accounts, licences, the AWS region, DNS host names, the certificate path, root protections, the budget alert, and the local toolchain, and records the installed versions. The documentation baseline is a precondition of Phase 0 rather than a phase of its own. No workload infrastructure is provisioned during Phase 0.
+## ADR-013: Remove the Google Cloud draft
 
-### Why
+**Status:** Accepted | **Date:** 2026-09-01
 
-Several later phases depend on facts that are cheap to confirm early and expensive to discover late. A Microsoft Entra Suite trial has a fixed expiry that constrains when the licence-dependent phases can run. SAML assertion consumer service URLs and OIDC redirect URIs depend on host names that must not change after the Entra applications are registered. A budget alert is only useful before the first billable resource exists. Treating these as a numbered phase with exit criteria makes them reviewable instead of assumed.
+**Decision:** Delete the Google Cloud Terraform draft instead of adapting it. Write AWS Terraform from an empty directory.
 
-### Alternatives
-
-- List prerequisites in the README only. Rejected because a prose list has no completion state, no exit criteria, and no worklog evidence.
-- Confirm each prerequisite when the phase that needs it begins. Rejected because a missing domain, licence, or role blocks work already in progress, and a trial clock that started too early cannot be recovered.
-- Provision a placeholder domain and certificate later. Rejected because renaming a registered Entra application's reply URLs invalidates the protocol evidence the project is built to demonstrate.
-
-## ADR-013: Remove the superseded Google Cloud draft
-
-**Status:** Accepted
-**Date:** 2026-09-01
-
-### Decision
-
-The `terraform/` directory contains a Google Cloud draft written before the project adopted AWS. Remove it rather than carrying it forward or adapting it. Phase 3 writes the AWS Terraform configuration from an empty directory.
-
-### Why
-
-The draft targets a different provider, a different compute model, and a Guacamole remote-access design that ADR-003 already rejected. Keeping it invites confusion about which configuration is authoritative and leaves a `terraform validate` job checking code that will never be applied. Nothing in it transfers to the AWS target beyond general module conventions, which ADR-007 already records.
-
-### Alternatives
-
-- Keep the draft on an archive branch. Rejected for a single-user learning repository where the decision log already records why Google Cloud was set aside; see ADR-002.
-- Adapt the existing modules to AWS. Rejected because the network, compute, and remote-access designs differ enough that a rewrite is clearer than a translation.
+**Why:** It targeted a different provider and design, and it confused which configuration was authoritative.
 
 ## ADR-014: Evaluate security controls proportionately
 
-**Status:** Accepted
-**Date:** 2026-09-01
+**Status:** Accepted | **Date:** 2026-09-01
 
-### Decision
+**Decision:** Before you keep, change, or remove a costly control, record the threat, risk reduction, friction, compensating controls, and rollback path.
 
-Evaluate a security control when it materially reduces project efficiency, increases recurring cost, or obscures the identity objective. Record the threat, expected risk reduction, operational friction, compensating controls, and rollback path before retaining, changing, or removing it.
+These stay mandatory:
 
-Root MFA, no root access keys, no committed secrets, no public management ports, reviewed IAM changes, and no persistent raw-token logging remain baseline requirements. Other defense-in-depth measures can be adjusted when a documented alternative provides sufficient protection for this single-user project.
+- Root MFA and no root access keys
+- No committed secrets
+- No public management ports
+- Reviewed IAM changes
+- No persistent raw-token logging
 
-### Why
+**Why:** Show informed risk decisions, not just defaults.
 
-A portfolio project should demonstrate informed risk decisions as well as secure defaults. Controls that do not materially reduce the project's credible risks can consume time and cost without improving the identity scenarios.
-
-### Alternatives
-
-- Implement every production control regardless of cost or friction. Rejected because the project is not a production service and some controls would hide the architecture under unrelated operations. See the [AWS Well-Architected Security Pillar](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/welcome.html).
-- Remove any control that slows implementation. Rejected because efficiency alone does not justify accepting credential exposure, account lockout, public management access, or irreversible changes.
-- Make undocumented exceptions. Rejected because later readers could not distinguish a conscious risk decision from an omission. Use the decision log and the [AWS Well-Architected Cost Optimization Pillar](https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/welcome.html) to record the tradeoff.
+| Alternative | Why not |
+| --- | --- |
+| Every production control | Not a production service. See the [Security Pillar](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/welcome.html). |
+| Remove any slow control | Speed alone doesn't justify credential exposure or lockout. |
+| Undocumented exceptions | Readers can't tell a decision from an omission. |
 
 ## ADR-016: Focus on lifecycle and Private Access
 
-**Status:** Superseded for future work by [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access)
-**Date:** 2026-09-04
+**Status:** Accepted | **Date:** 2026-09-04 | **Refined by:** [ADR-022](#adr-022-stop-rebuilding-the-private-aws-footprint), [ADR-023](#adr-023-validate-access-packages-and-jml-before-automating)
 
-### Decision
+**Decision:** Demonstrate JML across Entra, IAM Identity Center, and one Private Access destination. Remove the planned protocol apps, token inspectors, and standalone Conditional Access showcase. Keep MFA, existing Conditional Access, and credential hygiene.
 
-Demonstrate Joiner, Mover, and Leaver automation across Entra, AWS IAM Identity Center, and one Private Access destination. Retain the existing SAML federation and SCIM integration as supporting infrastructure. Remove the planned `saml-web`, `oidc-web`, `oauth-api`, protocol inspectors, and standalone Conditional Access showcase.
-
-Keep MFA, existing Conditional Access policies, credential hygiene, and private network boundaries. Policy changes required for Private Access remain in scope. ID Protection, Verified ID, and custom Logic App extensions are not required. Completed work remains evidence; only future phases are resequenced.
-
-### Why
-
-Federation is already demonstrated here; OIDC, OAuth, and Conditional Access have been covered in other projects. Lifecycle outcomes and private application access add distinct evidence without maintaining duplicate applications.
-
-### Alternatives
-
-- Keep the protocol-comparison platform. Rejected as duplicate scope with additional compute and networking.
-- Show lifecycle tasks without a resource-access outcome. Rejected: [Lifecycle Workflows](https://learn.microsoft.com/en-us/entra/id-governance/what-are-lifecycle-workflows) and [per-app Private Access](https://learn.microsoft.com/en-us/entra/global-secure-access/how-to-configure-per-app-access) together make provisioning, access change, and removal observable.
+**Why:** Other projects already cover OIDC, OAuth, and Conditional Access. Lifecycle and private access add distinct evidence.
 
 ## ADR-017: Size infrastructure for one private target
 
-**Status:** Superseded for future work by [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access)
-**Date:** 2026-09-04
+**Status:** Historical; footprint destroyed 2026-09-05 | **Date:** 2026-09-04
 
-### Decision
+**Decision:** Build one private AWS target and one supported Windows Server connector, with no high availability. Don't require a shared ECS platform, load balancers, a domain, or a NAT gateway.
 
-Plan one private AWS application and one supported Windows Server connector. The initial test footprint need not provide high availability; record that limitation rather than presenting it as production-ready.
-
-Do not mandate a shared ECS platform, public ALB, internal ALB, two-AZ deployment, purchased domain, or NAT gateway. Approve the necessary outbound connectivity, private destination addressing, transport, and no-public-inbound management path before deployment. AWS service endpoints are not a replacement for connector connectivity to Microsoft.
-
-Keep architecture-level modules where justified, inputs in private configuration, and derived values in locals. No one-resource wrapper modules are required. Confirm licence and client/connector prerequisites before starting paid hosts. This replaces the fixed topology and prerequisite assumptions in ADR-002, ADR-003, ADR-007, and ADR-012.
-
-### Why
-
-The target exists to prove governed private reachability. A single target and a single connector are enough to demonstrate it.
-
-### Alternatives
-
-- Preserve the full [Fargate platform](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html) with a shared cluster and load balancers. Rejected as breadth this project does not need.
-- Put the application on a public endpoint. Rejected because it defeats the private-access boundary.
-- Run the connector in a Linux container. Rejected: use a supported host per [Microsoft connector setup](https://learn.microsoft.com/en-us/entra/global-secure-access/tutorial-private-access-connector-setup).
+**Why:** One target and one connector prove governed private reachability.
 
 ## ADR-019: Run the private target on ARM Fargate behind interface endpoints
 
-**Status:** Superseded for future work by [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access)
-**Date:** 2026-09-04
+**Status:** Historical; footprint destroyed 2026-09-05 | **Date:** 2026-09-04
 
-**Supersedes:** the ADR-017 decision to defer the hosting model selection.
+**Decision:**
 
-### Decision
+- One ARM64 Fargate task and one `t3.xlarge` Windows Server 2022 connector in one VPC.
+- Connector subnet routes to an internet gateway. The connector has no ingress rule.
+- Target subnet has no internet route. The task pulls images through `ecr.api`, `ecr.dkr`, and `logs` interface endpoints and the S3 gateway endpoint.
+- Publish the task IP as an application segment on TCP 80.
+- Manage the connector through SSM Fleet Manager. Create its key pair outside Terraform.
+- No NAT gateway or load balancer. Single AZ.
 
-Run the private application target as a single ARM64 Fargate task, and the Microsoft Entra private network connector on a `t3.xlarge` Windows Server 2022 instance, in one VPC with two single-AZ subnets:
+**Why:** The connector needs wildcard Microsoft FQDNs, so its subnet must be routed. The target only needs ECR and CloudWatch Logs, which endpoints serve, so its isolation is a routing fact.
 
-- The connector subnet routes to an internet gateway. The connector holds a public address for outbound registration and tunnel traffic, and its security group declares no ingress rule.
-- The target subnet has a route table with no entry beyond the VPC-local route and the S3 gateway endpoint. The task takes no public address, and its security group admits the application port only from the connector's security group.
+| Alternative | Why not |
+| --- | --- |
+| EC2 target | Removes the container platform. |
+| Public task IP | Isolation would depend on security groups alone. |
+| NAT gateway | Gives the target an internet path it doesn't need. |
+| RDP to the connector | [Fleet Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/fleet-rdp.html) needs no inbound rule. |
+| FQDN segment | Deferred. Adds Private DNS as a second failure mode. |
 
-The task pulls its image through `ecr.api`, `ecr.dkr`, and `logs` interface endpoints plus the free S3 gateway endpoint, so nothing in the target tier needs an internet path. Publish the running task's private address as an IP-address application segment on TCP 80. Administer the connector through SSM Fleet Manager. Create the connector's EC2 key pair outside Terraform so no private key material enters state. `enable_private_access` gates the whole footprint, so a test window ends by setting it to `false` and applying.
+## ADR-020: Reuse Grafana as an anonymous private target
 
-No NAT gateway or load balancer is deployed. The footprint is single-AZ and is not highly available.
+**Status:** Historical; footprint destroyed 2026-09-05 | **Date:** 2026-09-04
 
-### Why
+**Decision:** Use a pinned Grafana OSS container with anonymous viewer access and the login form disabled. Drop Caddy, the SCIM bridge, and OIDC from the source lab. Persist nothing.
 
-The target exists to prove governed private reachability, and a container platform is worth demonstrating alongside it. ARM64 is the architecture the ARM64 workstation builds natively, so the image needs no cross-compilation.
+**Why:** With no app authentication, reachability is the only variable, so Entra makes the entire access decision. Caddy needs a public DNS record, which a private destination doesn't have.
 
-The endpoints are what keep the design honest. The connector's outbound allowlist is a set of wildcard FQDNs, including `*.msappproxy.net` and `*.servicebus.windows.net`, so endpoints cannot carry the connector's traffic and its subnet must be routed. The target's traffic is only ECR and CloudWatch Logs, which endpoints serve exactly, so the target subnet keeps an empty route table and its isolation stays a routing property rather than an absence of a public address.
-
-### Alternatives
-
-- Run the target on EC2 with a health response served from the AMI's Python build. Rejected: it removes the container platform from the project.
-- Give the Fargate task a public address in the routed subnet and pull from ECR over the internet gateway. Rejected: it contradicts the Phase 4 criterion that the target hold no public address, and it moves isolation onto the security group alone.
-- Reach ECR through a NAT gateway. Rejected: it gives the target a general internet path it has no use for.
-- Reach the connector over RDP from a permitted address. Rejected: [Fleet Manager Remote Desktop](https://docs.aws.amazon.com/systems-manager/latest/userguide/fleet-rdp.html) gives the interactive session that connector registration needs without an inbound rule.
-- Publish the target by FQDN. Deferred: an FQDN segment needs Private DNS configured in Global Secure Access, which adds a second failure mode to the first reachability test. Revisit once the IP segment works.
-
-## ADR-020: Reuse Grafana from the IAM lab as the private target, without its access layers
-
-**Status:** Superseded for future work by [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access)
-**Date:** 2026-09-04
-
-### Decision
-
-Use Grafana OSS as the private application target, adapted from the existing Grafana IAM lab. Take only the Grafana container. Do not carry over Caddy, the SCIM bridge, or the Entra OIDC configuration.
-
-Run Grafana with anonymous viewer access and the login form disabled, so the target authenticates nobody and holds no credentials. Pin the image tag and mirror it into the project ECR repository. Persist nothing: the task's Grafana database is ephemeral and is recreated with each test window.
-
-### Why
-
-A real application is better evidence than a static health page. An assigned identity landing on a working Grafana instance, and an unassigned one failing to resolve it at all, demonstrates the access boundary more convincingly than an HTTP 200.
-
-The three layers of the source lab do not all transfer:
-
-- Caddy exists to obtain and renew a public Let's Encrypt certificate against a public DNS label. A Private Access destination has no public record and cannot answer an ACME HTTP-01 challenge, so Caddy has no function here.
-- The OIDC and SCIM layers are the scope ADR-016 removed from this project as already covered elsewhere. The Grafana lab is where they are covered.
-
-Removing Grafana's own authentication is the point rather than a shortcut. If Grafana authenticated its users, a successful sign-in would prove Grafana's configuration works, not that Private Access allowed the session. With anonymous access, reachability is the only variable, and Entra holds the entire access decision. It also keeps every credential out of the image, the task definition, and Terraform state.
-
-### Alternatives
-
-- Serve a static page from nginx or the AMI's Python build. Rejected: a weaker demonstration, and the Grafana lab already provides a working application.
-- Carry the whole compose stack across, including Caddy and the SCIM bridge. Rejected: Caddy cannot function without a public endpoint, and the SCIM bridge duplicates provisioning this project already performs against IAM Identity Center.
-- Keep Grafana's Entra OIDC sign-in behind Private Access. Rejected: it re-imports the scope ADR-016 removed, and it confuses which layer made the access decision.
-- Persist the Grafana database on EFS. Rejected: the target holds no state worth keeping between test windows, and it would add a mount target and a second security group to a footprint that is torn down regularly.
+| Alternative | Why not |
+| --- | --- |
+| Static page | Weaker demonstration. |
+| Full compose stack | Caddy can't work privately; the SCIM bridge duplicates Identity Center provisioning. |
+| Grafana OIDC sign-in | Hides which layer made the access decision. |
+| EFS persistence | No state worth keeping. |
 
 ## ADR-021: Use an Entra-joined VM as the Private Access test client
 
-**Status:** Accepted
-**Date:** 2026-09-05
+**Status:** Accepted | **Date:** 2026-09-05
 
-### Decision
+**Decision:** Test Private Access from an Entra-joined Windows 11 VM, not the workstation.
 
-Test Microsoft Entra Private Access from an Entra-joined Windows 11 VM rather than from the project workstation.
+**Why:**
 
-### Why
+- The Global Secure Access client needs a Primary Refresh Token (PRT).
+- An Entra-registered device signed in with a personal Microsoft account never gets one. The client fails with `AADSTS9002341` and shows only `Signed out`.
+- The workstation runs Windows 11 Home, which can't be Entra joined.
+- The Azure VM has no network path to AWS, so a successful request proves the tunnel carried it.
 
-The Global Secure Access client needs a user token, which needs a Primary Refresh Token. A device that is only Entra registered, signed into Windows with a personal Microsoft account, never issues one. The client fails with `AADSTS9002341: User is required to permit SSO`, retries every 60 seconds, and never receives a forwarding profile. It reports only `Signed out`, which does not point at the cause.
+| Alternative | Why not |
+| --- | --- |
+| Upgrade the workstation to Pro | License purchase to work around a test constraint. |
+| Entra-registered device | [Preview support](https://learn.microsoft.com/entra/global-secure-access/how-to-install-windows-client) doesn't produce a PRT in this configuration. |
+| Test from the connector host | Reaches the target directly and proves nothing. |
 
-The workstation is Windows 11 Home, and Home cannot be Entra joined at all: join requires Pro, Enterprise or Education. No configuration change could fix it. The portal lists Microsoft Entra joined as a system requirement for both the x64 and Arm64 clients.
+## ADR-022: Stop rebuilding the private AWS footprint
 
-A joined VM obtains a PRT at Windows sign-in and acquires tokens silently. It also improves the evidence: the VM sits in Azure with no network path to the AWS VPC, so a successful request proves the tunnel carried it.
+**Status:** Accepted | **Date:** 2026-09-09
 
-### Alternatives
+**Decision:** Don't rebuild the AWS footprint. Complete lifecycle validation in Entra and IAM Identity Center only. State the unproven claims instead of leaving open checklist items.
 
-- Upgrade the workstation to Windows 11 Pro. Rejected as a licence purchase to work around a test-client constraint.
-- Rely on Entra registered support. Rejected: the [client install requirements](https://learn.microsoft.com/entra/global-secure-access/how-to-install-windows-client) list registered devices as supported in preview, but a registered device with a consumer Windows sign-in cannot produce the PRT the client needs, so the path does not work in this configuration.
-- Test from the connector host. Rejected: it reaches the target directly over the VPC and would prove nothing about Private Access.
+**Why:**
 
-## ADR-022: Conclude infrastructure-dependent validation after the reachability proof
+- A rebuild costs a Windows host, four interface endpoints, and a Fargate task, plus manual connector registration and segment republishing.
+- Phase 5 already proved the core claim: an Azure VM with no route to AWS got `HTTP/1.1 200 OK` from Grafana on an isolated subnet.
+- Identity Center, permission sets, and SCIM are free, so JML can finish without new resources.
 
-**Status:** Superseded for future work by [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access)
-**Date:** 2026-09-09
+**Unproven claims:**
 
-### Decision
+- The client-side denial for an unassigned identity. Assignment gating is configured, and Phase 1 observed the mechanism (`AADSTS50105`).
+- Application reachability changing across a role move.
 
-Do not rebuild the private AWS footprint. Complete the remaining lifecycle validation entirely in Entra and IAM Identity Center, and state the two claims that leaves unproven rather than leaving them as open checklist items.
+## ADR-023: Validate access packages and JML before automating
 
-### Why
+**Status:** Accepted; validation pending | **Date:** 2026-09-10 | **Amends:** [ADR-004](#adr-004-split-provisioning-by-platform-boundary)
 
-The footprint was destroyed after the Phase 5 test window on 2026-09-05. Rebuilding it to finish the outstanding items would cost a Windows connector host, four interface endpoints, and a Fargate task for as long as the work took, plus the manual repairs a rebuild forces: the ECR repository sits inside the gated module so the image is destroyed with it, connector registration is not held in Terraform and has to be redone by hand, and Fargate reassigns the task address on every replacement so the application segment must be republished. The address already moved once during Phase 4 for that reason.
+**Decision:**
 
-What that spend would buy is narrow. The project's central claim is that identity, not network topology, governs reach to a private application, and Phase 5 evidenced it: Grafana on an isolated AWS subnet answered `HTTP/1.1 200 OK` with 49,401 bytes to an Entra-joined Azure VM that has no route to the VPC and no peering or VPN to it. Authorisation happened at the Global Secure Access edge before any packet approached AWS.
+- Access packages and synthetic Joiner, Mover, and Leaver personas are required outcomes.
+- Define package resource roles, ownership, approval, expiry, and recovery first.
+- Validate each operation on demand, then automate it.
+- Packages govern assigned groups. Dynamic AWS role groups keep attribute-based membership.
+- Remove the custom workflow deploy, export, and common helpers and the unvalidated Mover and Leaver templates. Keep the Joiner definition as a reference.
+- Repository cleanup makes no tenant changes. Inventory before you remove tenant resources.
 
-Everything still open is identity-side and free. IAM Identity Center, permission sets, account assignments, and SCIM provisioning carry no charge, so the Joiner, Mover, and Leaver progression can be completed and evidenced end to end across both clouds without provisioning anything.
+**Why:** The old automation deployed workflows but never validated Mover or Leaver outcomes. A small validated replacement is more trustworthy.
 
-The denial case is the item this decision looks worst against, so it is worth being exact about what is and is not evidenced. The Private Access application is assignment-gated to the three AWS role groups, which is shown in the Phase 5 configuration evidence. The enforcement mechanism is Entra enterprise application assignment, and it was observed rejecting an unassigned user with `AADSTS50105` during Phase 1 troubleshooting. So the control is shown configured and the mechanism is shown working. What was never observed is the client-side symptom: an unassigned identity receiving no forwarding-profile rule for the segment. Private Access decides before brokering a session, so this is a gap in the observed surface rather than in the boundary itself.
+| Alternative | Why not |
+| --- | --- |
+| Drop packages and JML | Governed lifecycle access is the project goal. |
+| Patch the old framework or import closed PRs #5 and #6 | Validate operations and failure cases before building automation. |
 
-### Consequences
+See the [roadmap](docs/roadmap.md) for acceptance criteria.
 
-Two claims are carried as unproven, and the scope boundary in `plan.md` states them:
+## ADR-024: Separate the identity Terraform root
 
-- The Global Secure Access client denial surface for an unassigned identity.
-- Application-level reachability changing across a role move: Grafana refusing the Mover persona before promotion and answering after.
+**Status:** Accepted | **Date:** 2026-09-10
 
-Both would be settled by one test window. Set `enable_private_access` to `true`, rebuild and push the image, re-register the connector, and republish the segment against the new task address.
+**Decision:**
 
-### Alternatives
+- Move the identity configuration and its state to `terraform/identity/`.
+- Keep the `module.identity_center` address, so no `moved` blocks, state moves, or imports are needed.
+- Remove the private-target module call, its variables and outputs, and the `enable_private_access` flag.
+- Keep `modules/private_access/` as uncalled reference code.
 
-- Keep the footprint running between test windows. Rejected: the Windows connector host and the interface endpoints bill continuously, and the remaining work does not need them.
-- Rebuild once and finish everything in a single window. Rejected on cost against the marginal evidence, which is the client-side symptom of a mechanism already evidenced elsewhere. This is the option to revisit if the work is ever resumed.
-- Mark Phases 6 and 7 complete on the identity results alone. Rejected: the reachability halves are genuinely untested, and a checklist that hides that is worth less than one that states it.
-- Restructure the footprint to make rebuilds cheap, by moving ECR outside the gate and publishing an FQDN segment through Service Connect. Rejected: it only pays off across repeated deployments, which this decision rules out.
+**Why:** One shared state let a teardown delete the permission sets that provide AWS administrative access. Separate state makes that impossible. A plan with zero changes proves the move.
 
-## ADR-023: Build an AWS operations lab with governed workforce access
+| Alternative | Why not |
+| --- | --- |
+| One root with a flag and `-target` | Teardown mistakes stay possible. |
+| Workspaces | Workspaces vary inputs, not configurations. |
+| Migrate to a remote backend at the same time | Don't combine a backend migration with a refactor. |
 
-**Status:** Accepted direction; implementation pending
-**Date:** 2026-09-10
-**Supersedes:** the exclusive lifecycle scope of ADR-016, the single-target future topology of ADR-017/019, the future anonymous-Grafana direction of ADR-020, and the no-rebuild decision in ADR-022.
-**Amends:** ADR-004: validate small governance operations manually/on demand before automating them.
+**Consequences:**
 
-### Decision
-
-Build a minimal ECS Fargate API backed by RDS PostgreSQL, with Grafana providing operational dashboards and failure diagnosis. Keep Grafana private through Entra Private Access and add native Entra SSO for application roles. Run short lab windows, with stable private DNS and a proposed internal ALB. Separate retained identity/foundation resources from disposable infrastructure before rebuilding.
-
-Access packages and synthetic Joiner, Mover, and Leaver personas remain required outcomes. Define package resource roles, ownership, approval/expiry policies, persona behavior, and failure recovery first. Validate operations against the running platform, then implement small repeatable automation. Packages govern assigned application groups; existing dynamic AWS role groups retain attribute-based membership.
-
-Remove the custom Lifecycle Workflow deploy/export/common helpers and unvalidated Mover/Leaver templates from active code. Preserve the unchanged Joiner definition as a historical reference and retain worklogs, screenshots, and private local exports. Do not import the unmerged entitlement tooling from closed PRs #5/#6 as the replacement.
-
-Repository cleanup makes no tenant changes. Inventory workflows, schedules, packages, policies, assignments, and personas before removing only unused/incomplete project resources. Preserve validated baseline/Joiner resources and administrative recovery dependencies.
-
-The tracked [roadmap](docs/roadmap.md) defines the phases and acceptance criteria. The existing Terraform and anonymous Grafana image remain the previous implementation until later changes replace them; this decision does not claim the new platform or governance automation is deployed.
-
-### Why
-
-The project needs useful AWS operational behavior as well as identity outcomes. A small database-backed service provides deployment, scaling, and recovery exercises without a large application backlog. Access packages and personas then govern a resource that has meaningful application permissions.
-
-The old automation showed some deployment behavior but did not validate the full Mover/Leaver outcomes. Removing that active implementation allows a focused replacement while preserving what was actually demonstrated.
-
-### Alternatives
-
-- Remove access packages and JML from scope. Rejected: governed lifecycle access remains a project goal.
-- Keep patching the previous generic framework or import the closed entitlement-tooling PRs. Rejected in favor of validating the required operations and failure cases before rebuilding their automation.
-- Keep Grafana as an anonymous reachability-only target. Rejected for the next build: Private Access and application roles should both have observable behavior.
-- Build a queue/worker platform or a full observability stack immediately. Deferred until the minimal API/RDS/Grafana lab and required governance scenarios work.
-
-### Consequences
-
-The previous Private Access denial surface and application reachability across a role move remain historical evidence gaps. Workflow/task success, package delivery, SCIM propagation, application permissions, and existing-session behavior are separate measurements.
-
-Private Access, entitlement management, and Lifecycle Workflows retain their licensing prerequisites. A single connector, NAT gateway, RDS instance, and initial task per service are lab availability compromises. Rebuilds must preserve AWS administrative access, images, and state recovery.
-
-## ADR-024: Separate Terraform roots by resource lifecycle
-
-**Status:** Accepted; identity root implemented, foundation and lab roots pending
-**Date:** 2026-09-10
-**Implements:** the lifecycle separation required by [ADR-023](#adr-023-build-an-aws-operations-lab-with-governed-workforce-access) and Phase 1 of the [roadmap](docs/roadmap.md).
-
-### Decision
-
-Split Terraform into one root per resource lifetime, each with its own state:
-
-| Root | Owns | Lifetime |
-| --- | --- | --- |
-| `terraform/identity/` | Permission sets and account assignments | Retained |
-| `terraform/foundation/` | ECR images and reusable DNS/certificate resources | Retained between lab windows |
-| `terraform/lab/` | VPC, connector, internal ALB, NAT, ECS services, RDS | Per lab window |
-
-This change implements the identity root only. It moves the existing configuration and its state together, keeps the `module.identity_center` call name, and therefore preserves every resource address; no `moved` blocks, `state mv`, or imports are involved. The private-target module call, its variables, its locals, and its three outputs leave the active configuration. `modules/private_access/` stays as reference code that no root calls.
-
-The old `enable_private_access` switch is removed with it. Lab teardown becomes destroying a separate root rather than flipping a flag inside the root that also owns AWS login.
-
-### Why
-
-One root and one state file made the blast radius of a teardown the whole project. A mistyped destroy, or a flag flip plus apply, could remove the permission sets and account assignments that provide AWS administrative access — the exact failure the roadmap's Phase 1 exit criterion rules out. Separate state is the boundary that makes that impossible rather than merely discouraged; a flag in a shared root is a convention, not a control.
-
-Splitting by lifetime rather than by service also matches how the resources are actually operated: identity is edited rarely and must survive, images must outlive a window, and lab infrastructure is meant to be disposable.
-
-Doing the identity move first, alone, keeps it verifiable. Address preservation means the acceptance test is a plan reporting zero additions, changes, and deletions, which is unambiguous in a way that a combined refactor would not be.
-
-### Alternatives
-
-- Keep one root and rely on `enable_private_access` and targeted applies. Rejected: the retained and disposable resources still share one state, so teardown mistakes stay possible and `-target` is an error-prone manual control.
-- Use workspaces instead of separate roots. Rejected: workspaces vary inputs for one configuration; here the configurations and their lifetimes genuinely differ.
-- Split identity, foundation, and lab in a single change. Rejected: it would mix a state relocation with new resource definitions, and the zero-diff proof would no longer isolate the move.
-- Move to a remote backend at the same time. Rejected: backend migration should not be combined with a refactor. It remains a separate change, with its bootstrap outside routine lab teardown.
-
-### Consequences
-
-State stays local and per root, and is machine-local: a checkout on another machine, or one whose state predates this change, needs the state relocated rather than a fresh apply. Applying the identity root into an empty state would try to create duplicate permission sets.
-
-Cross-root values must become explicit inputs. The lab root will need retained identifiers from foundation, and the app image helper no longer reads a repository URL from Terraform output; it takes `ECR_REPOSITORY_URL` explicitly. More roots also mean more init/plan invocations and no single whole-project plan.
-
-`modules/private_access/` remains uncalled reference code until the lab root replaces it. Foundation and lab ownership boundaries — particularly private hosted-zone associations that depend on a disposable VPC — still need deciding before those roots are written.
+- State is local and per root. Relocate existing state; applying into empty state creates duplicate permission sets.
+- `app/build-and-push.sh` takes `ECR_REPOSITORY_URL` explicitly instead of reading Terraform output.
