@@ -1,44 +1,41 @@
-# AWS application platform with Microsoft Entra and Grafana
+# Cross-cloud workforce identity: Microsoft Entra and AWS
 
-An AWS infrastructure and identity lab: operate a minimal ECS application backed by RDS, monitor it with private Grafana, and govern workforce access through Microsoft Entra.
+An identity lab that governs workforce access to AWS through Microsoft Entra: federation and SCIM into IAM Identity Center, attribute-driven AWS roles, Terraform-managed permission sets, Entra Private Access, and access packages with synthetic Joiner/Mover/Leaver personas.
 
-The next build combines two connected areas:
+> **In progress / pending:** access packages and JML (Joiner/Mover/Leaver) validation are the remaining work. Baseline/elevated package behavior and the Mover and Leaver personas have **not** been validated yet; only the historical Joiner result below has evidence.
 
-- **AWS operations:** Fargate deployments, PostgreSQL, useful dashboards, scaling, failure diagnosis, recovery, and repeatable teardown.
-- **Identity governance:** access packages, synthetic Joiner/Mover/Leaver personas, attribute-driven AWS roles, SCIM, Entra Private Access, and Grafana SSO.
+## Scope
 
-Access packages and all three personas remain in scope. The previous deployment helpers and unvalidated Mover/Leaver templates have been removed so they can be replaced against a defined access model and acceptance criteria. The validated Joiner definition remains a [historical reference](entra/lifecycle-workflows/README.md).
+No additional AWS resources will be added. The planned ECS API, RDS database, Grafana SSO, dashboards, and the retained foundation and disposable lab Terraform roots are out of scope.
+
+What remains:
+
+- **Access packages:** verify the catalog, baseline/elevated package resource roles, policies, approvals, and expiry against the governance contract in the [roadmap](docs/roadmap.md#access-packages-and-jml).
+- **JML validation:** evidence all three synthetic personas end to end, then automate only the validated operations.
+
+The previous deployment helpers and unvalidated Mover/Leaver templates have been removed so they can be replaced against a defined access model and acceptance criteria. The validated Joiner definition remains a [historical reference](entra/lifecycle-workflows/README.md).
 
 ## Current status
 
-The AWS lab footprint is down. The repository still contains the previous private-target infrastructure and anonymous Grafana image; the ECS API, RDS, Grafana SSO, dashboards, and replacement governance automation are **planned, not implemented**.
+The AWS lab footprint is down. The active [Terraform root](terraform/README.md) holds retained identity resources only: IAM Identity Center permission sets and account assignments. The previous private-target module and anonymous Grafana image remain as reference code and are not deployed.
 
-The [roadmap](docs/roadmap.md) is the tracked implementation plan. [ADR-023](decisions.md#adr-023-build-an-aws-operations-lab-with-governed-workforce-access) records the scope reset. Live AWS/Entra inventory must be checked before rebuilding or cleaning up tenant resources.
+The [roadmap](docs/roadmap.md) and [ADR-023](decisions.md#adr-023-build-an-aws-operations-lab-with-governed-workforce-access) were written for the broader AWS operations lab. Their AWS workload phases no longer apply; their access package and JML sections remain the reference for the remaining work. Live AWS/Entra inventory must be checked before changing or cleaning up tenant resources.
 
-## Planned architecture
+## Architecture
 
 ```mermaid
 flowchart LR
-    Personas["Joiner / Mover / Leaver"] --> Lifecycle["Validated lifecycle workflows"]
-    Lifecycle --> Packages["Access packages<br/>Baseline + elevated"]
+    Personas["Joiner / Mover / Leaver<br/>(validation pending)"] --> Lifecycle["Lifecycle workflows"]
+    Lifecycle --> Packages["Access packages<br/>Baseline + elevated<br/>(validation pending)"]
     Packages --> AppGroups["Assigned application groups"]
-    AppGroups --> PA["Entra Private Access"]
-    AppGroups --> SSO["Grafana Entra SSO roles"]
     Attributes["Workforce attributes"] --> AWSGroups["Dynamic AWS groups"]
     AWSGroups -->|"SCIM"| IC["IAM Identity Center"]
-    Client["Entra-joined client"] --> PA
-    Connector["Windows connector"] -->|"Outbound tunnel"| PA
-    Connector --> ALB["Internal HTTPS ALB"]
-    ALB --> Grafana["Grafana on Fargate"]
-    ALB --> API["Minimal API on Fargate"]
-    SSO -. "Application authorization" .-> Grafana
-    API --> RDS["Private RDS PostgreSQL"]
-    API --> CW["CloudWatch metrics and logs"]
-    AWS["AWS service telemetry"] --> CW
-    Grafana -->|"Query with task IAM role"| CW
+    IC --> PermSets["Permission sets<br/>(Terraform)"]
+    PermSets --> Account["AWS account"]
+    AppGroups -.-> PA["Entra Private Access<br/>(historical)"]
 ```
 
-Private Access controls network reachability; Grafana SSO controls application roles. Access packages govern assigned application-group membership. Dynamic AWS role groups keep their existing attribute-based ownership. Lab teardown must preserve administrative access and retained foundation resources.
+Access packages govern assigned application-group membership. Dynamic AWS role groups keep their existing attribute-based ownership, and Terraform owns permission sets and account assignments. AWS administrative access must stay independent of package-managed persona access.
 
 ## Existing evidence
 
@@ -50,17 +47,17 @@ These are historical results, not a claim that the environment is currently depl
 | Joiner | Baseline access package delivered and AWS provisioning observed before first interactive sign-in | [Phase 2 Joiner](worklogs/phase-2-identity-lifecycle-joiner.md) |
 | Workflow tooling | Definitions deployed; Mover package swap and Leaver execution were not validated; tooling now retired | [Phase 2 tooling](worklogs/phase-2-lifecycle-workflows-as-code.md) |
 | AWS roles | Three Terraform-managed permission sets and account assignments | [Phase 3](worklogs/phase-3-terraform-identity-center.md) |
-| Infrastructure | Private VPC, connector, and ARM Fargate Grafana target | [Phase 4](worklogs/phase-4-private-access-footprint.md) |
+| Infrastructure | Private VPC, connector, and ARM Fargate Grafana target (since torn down) | [Phase 4](worklogs/phase-4-private-access-footprint.md) |
 | Private Access | Grafana reached from an Entra-joined client with no VPN or peering to AWS | [Phase 5](worklogs/phase-5-private-access-assignment.md) |
 
-The previous unassigned-client denial test and application reachability across a role move remain unproven. The new roadmap includes explicit access-layer tests and JML evidence.
+The previous unassigned-client denial test and application reachability across a role move remain unproven.
 
-## Next delivery steps
+## Next steps (pending)
 
-1. Inventory access/state and define the package/persona ownership model.
-2. Separate retained resources from disposable lab infrastructure.
-3. Build the minimal ECS/RDS workload and private Grafana with SSO and dashboards.
-4. Validate baseline/elevated access packages and the three personas against the working platform, then automate the proven operations.
-5. Demonstrate failures, scaling, recovery, CI deployment, and teardown/rebuild.
+1. Inventory tenant access packages, policies, resource roles, assignments, workflows, and existing personas.
+2. Define package/persona ownership, eligibility, approvals, expiry, and administrative recovery.
+3. Validate the baseline and elevated access packages.
+4. Validate the Joiner, Mover, and Leaver personas against the [acceptance criteria](docs/roadmap.md#persona-acceptance-criteria).
+5. Automate only the validated operations, with dry-run output, repeat-run behavior, and negative-case tests.
 
-Prepare locally, deploy for short lab windows, and record the retained costs afterward. Start with the [roadmap](docs/roadmap.md), not the old worklogs' deployment commands.
+Start with the [roadmap](docs/roadmap.md#access-packages-and-jml), not the old worklogs' deployment commands.
