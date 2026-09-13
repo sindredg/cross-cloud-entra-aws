@@ -2,42 +2,45 @@
 
 **Date:** 2026-09-03
 
-**Historical tooling:** The helpers and unvalidated Mover/Leaver templates described below were retired on 2026-09-10. The observations remain unchanged; these are no longer current deployment instructions. See the [reference and rebuild scope](../entra/lifecycle-workflows/README.md) and [ADR-023](../decisions.md#adr-023-build-an-aws-operations-lab-with-governed-workforce-access).
+> **Historical:** The helpers and Mover and Leaver templates described here were removed on 2026-09-10. See the [Lifecycle Workflows reference](../entra/lifecycle-workflows/README.md) and [ADR-023](../decisions.md#adr-023-validate-access-packages-and-jml-before-automating).
 
-## Goal
-
-Deploy the Joiner, Mover, and Leaver workflows from files in this repository instead of the portal, without committing a single tenant object ID.
+**Goal:** Deploy the Joiner, Mover, and Leaver workflows from repository files, with no tenant object IDs committed.
 
 ## Why not Bicep
 
-Microsoft Graph Bicep supports only `applications`, `appRoleAssignedTo`, `federatedIdentityCredentials`, `groups`, `oauth2PermissionGrants`, `servicePrincipals`, and `users`. Lifecycle Workflows are not in that list, so the pattern used for the dynamic groups does not extend to them. The definitions go to the Graph REST API as JSON instead, under [`entra/lifecycle-workflows/`](../entra/lifecycle-workflows/).
+Graph Bicep supports only `applications`, `appRoleAssignedTo`, `federatedIdentityCredentials`, `groups`, `oauth2PermissionGrants`, `servicePrincipals`, and `users`. Lifecycle Workflows aren't on the list, so the definitions went to the Graph REST API as JSON.
 
-## Implementation
+## Steps
 
-Installed the prerequisite left over from Phase 0 and connected with the three delegated scopes the scripts need.
+1. Install the Graph module and connect with the workflow, group, and entitlement management scopes.
 
-![Microsoft.Graph.Authentication 2.39.0 installed](../docs/images/phase-2-16-graph-module-installed.png)
+   ![Microsoft.Graph.Authentication 2.39.0 installed](../docs/images/phase-2-16-graph-module-installed.png)
 
-![Connect-MgGraph with the workflow, group, and entitlement management scopes](../docs/images/phase-2-17-graph-connect-scopes.png)
+   ![Connect-MgGraph with the workflow, group, and entitlement management scopes](../docs/images/phase-2-17-graph-connect-scopes.png)
 
-Committed definitions carry `<PLACEHOLDER>` tokens for every tenant-specific display name, and `${group:...}`, `${accessPackage:...}`, and `${accessPackagePolicy:...}` markers for the object IDs that task arguments require. `deploy.ps1` refuses any file that still contains a `<PLACEHOLDER>`, so the templates cannot be deployed by accident; a real deployment copies them to the Git-ignored `local/` directory and fills in the names. Object IDs resolve at deployment time and fail loudly when a name matches no object or more than one.
+1. Commit definitions with `<PLACEHOLDER>` names and `${group:...}`, `${accessPackage:...}`, and `${accessPackagePolicy:...}` markers. The deploy script:
+   - Refuses files that still contain `<PLACEHOLDER>`.
+   - Resolves IDs at deploy time.
+   - Fails if a name matches zero or several objects.
 
-![Committed joiner definition with placeholders and the time-based hire date trigger](../docs/images/phase-2-18-joiner-definition.png)
+   ![Committed joiner definition with placeholders and the time-based hire date trigger](../docs/images/phase-2-18-joiner-definition.png)
 
-The deploy script compares the tenant against the file and picks one of four paths. This split is forced by the API: `PATCH` accepts only `displayName`, `description`, `isEnabled`, and `isSchedulingEnabled`, so any change to `tasks` or `executionConditions` needs `POST .../createNewVersion`.
+1. Compare the tenant with the file and pick a write path. `PATCH` accepts only four properties, so task changes need `createNewVersion`.
 
-| Situation | Action |
-| --- | --- |
-| No workflow with that display name | `POST` creates it |
-| Only the four patchable properties differ | `PATCH` updates in place |
-| `tasks` or `executionConditions` differ | `createNewVersion` publishes a new version |
-| Nothing differs | No write call |
+   | Situation | Action |
+   | --- | --- |
+   | Workflow doesn't exist | `POST` |
+   | Only `displayName`, `description`, `isEnabled`, or `isSchedulingEnabled` differ | `PATCH` |
+   | `tasks` or `executionConditions` differ | `createNewVersion` |
+   | Nothing differs | No write |
 
-Running the Joiner definition against the workflow that Phase 2 validated produces no write call, which is what closes the reconciliation between the portal and the repository.
+## Validation
+
+The validated Joiner matched its file, so `-WhatIf` planned no write.
 
 ![deploy.ps1 -WhatIf reports the joiner already matches version 1](../docs/images/phase-2-19-joiner-whatif-no-change.png)
 
-Every definition sets `isSchedulingEnabled` to `false`, so nothing fires on its own. `-WhatIf` makes no write calls at all.
+Every definition set `isSchedulingEnabled` to `false`. `-WhatIf` made no write calls.
 
 ![deploy.ps1 -WhatIf plans the leaver creation](../docs/images/phase-2-20-leaver-whatif-create.png)
 
@@ -45,9 +48,7 @@ Every definition sets `isSchedulingEnabled` to `false`, so nothing fires on its 
 
 ![Leaver tasks: cancel pending requests, remove assignments, revoke tokens, disable account](../docs/images/phase-2-22-leaver-tasks.png)
 
-## Validation
-
-All three workflows exist in the tenant, deployed from files, with scheduling off and no object IDs in the committed definitions.
+All three workflows existed in the tenant with scheduling off.
 
 ![Joiner, Mover, and Leaver listed in Lifecycle Workflows](../docs/images/phase-2-25-workflows-deployed.png)
 
@@ -55,12 +56,15 @@ All three workflows exist in the tenant, deployed from files, with scheduling of
 
 ## Troubleshooting
 
-The Mover was designed to trigger on a change to either `jobTitle` or `department`. Graph rejected the create with `400 BAD_REQUEST: Multiple trigger attributes are not allowed`.
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `400 BAD_REQUEST: Multiple trigger attributes are not allowed` | `attributeChangeTrigger` accepts one attribute | Trigger on `jobTitle` only, which the role groups use |
 
 ![Graph rejects the mover create because it declares two trigger attributes](../docs/images/phase-2-23-mover-trigger-rejected.png)
 
-An `attributeChangeTrigger` accepts exactly one attribute. The definition now triggers on `jobTitle` alone, which is the attribute the dynamic role groups key on, so a department change without a title change is not a role change in this project's model. Covering both would take two workflows.
-
 ![The mover workflow is created at version 1](../docs/images/phase-2-24-mover-created.png)
 
-The deployed Mover also carries only the token revocation task. Its access package swap needs a second package that does not exist yet, so those tasks stay in the committed definition and go in when Phase 7 creates the elevated package.
+## Limits
+
+- The deployed Mover ran only token revocation. The package swap needed an elevated package that didn't exist.
+- The Leaver was deployed but never run.

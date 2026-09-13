@@ -2,21 +2,17 @@
 
 **Date:** 2026-09-01
 
-## Goal
-
-Remove superseded infrastructure, confirm the local toolchain, and identify the remaining prerequisites before any workload infrastructure is provisioned.
+**Goal:** Remove superseded infrastructure and confirm the local toolchain before provisioning anything.
 
 ## Changes
 
-- Removed the superseded Google Cloud Terraform directory, per ADR-013. The files moved to a dated recovery directory outside the repository. No AWS or Entra resources were touched.
-- Replaced the Terraform validation workflow with a provider-neutral secret-scanning workflow.
-- Added a proportional security-review rule and ADR-014.
+- Removed the Google Cloud Terraform draft ([ADR-013](../decisions.md#adr-013-remove-the-google-cloud-draft)). No AWS or Entra resources changed.
+- Replaced the Terraform validation workflow with a secret-scanning workflow.
+- Added a proportionate security review rule ([ADR-014](../decisions.md#adr-014-evaluate-security-controls-proportionately)).
 
-## Validation
+## Toolchain
 
-Toolchain as installed on the working WSL environment:
-
-| Component | Result |
+| Component | Version |
 | --- | --- |
 | Git | 2.43.0 |
 | Terraform | 1.15.8 |
@@ -25,4 +21,4 @@ Toolchain as installed on the working WSL environment:
 | Azure CLI | 2.88.0 |
 | Bicep | Installed through Azure CLI |
 | PowerShell 7 | Installed on Windows; Graph modules added in Phase 2 |
-| Workstation architecture | Linux ARM64 (`aarch64`) |
+| Workstation | Linux ARM64 (`aarch64`) |

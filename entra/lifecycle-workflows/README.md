@@ -1,33 +1,44 @@
-# Lifecycle Workflows: reference and rebuild scope
+# Lifecycle Workflows
 
-Access packages and synthetic Joiner, Mover, and Leaver personas remain required project outcomes. The custom deployment/export framework and unfinished Mover/Leaver templates have been removed from active code. Replacement automation will follow the [governance contract and acceptance criteria](../../docs/roadmap.md#access-packages-and-jml).
+This directory holds the historical Joiner definition. Replacement automation follows the [roadmap](../../docs/roadmap.md#access-packages-and-jml).
 
-## What remains
+## Joiner reference
 
-[`reference/joiner.example.json`](reference/joiner.example.json) preserves the previous Joiner definition unchanged. Its workflow enabled a disabled synthetic account, requested the baseline access package, and was observed delivering baseline access before first interactive sign-in. See the [Joiner evidence](../../worklogs/phase-2-identity-lifecycle-joiner.md).
+[`reference/joiner.example.json`](reference/joiner.example.json) is the unchanged Joiner definition. The workflow:
 
-This is a historical reference, not a deployable configuration. It still contains tenant placeholders, custom resolver markers, and the original exported shape. The removed helpers are no longer available to resolve those markers. It must be reviewed against current APIs and the new access model before reuse.
+1. Enabled a disabled synthetic account.
+1. Requested the baseline access package.
 
-The evidence does not establish that the account remained disabled until package delivery; the observed task order enabled it first.
+It delivered baseline access before first sign-in. See the [Joiner evidence](../../worklogs/phase-2-identity-lifecycle-joiner.md).
 
-## What was removed
+> **Note:** This file isn't deployable. It contains tenant placeholders and resolver markers that the removed helpers used to fill in. Review it against current APIs before you reuse it.
 
-- `deploy.ps1`, `export.ps1`, and `common.ps1`: the custom display-name resolution and workflow reconciliation framework.
-- `workflows/mover.example.json`: a package-swap definition that was not validated end to end. The historical tenant Mover ran only a token-revocation task.
-- `workflows/leaver.example.json`: a deployed definition without a validated Leaver execution.
+The account was enabled before package delivery, so the evidence doesn't show delivery while the account stayed disabled.
 
-The removed files remain recoverable from Git history. Historical worklogs retain their original observations, including the limited deployment checks that did pass.
+## Removed files
 
-The unmerged access-package tooling from closed PRs [#5](https://github.com/sindredg/cross-cloud-entra-aws/pull/5) and [#6](https://github.com/sindredg/cross-cloud-entra-aws/pull/6) is not imported as the replacement.
+| File | Reason |
+| --- | --- |
+| `deploy.ps1`, `export.ps1`, `common.ps1` | Custom reconciliation framework |
+| `workflows/mover.example.json` | Package swap never validated. The tenant Mover ran only token revocation. |
+| `workflows/leaver.example.json` | Deployed but never validated |
 
-## Tenant state is separate
+The files remain in Git history. Closed PRs [#5](https://github.com/sindredg/cross-cloud-entra-aws/pull/5) and [#6](https://github.com/sindredg/cross-cloud-entra-aws/pull/6) aren't the replacement.
 
-This repository cleanup does not remove access packages, disable workflows, delete personas, or revoke live assignments. Ignored `local/` exports and configuration are preserved.
+## Tenant state
 
-Before tenant cleanup, inventory project-only workflows, schedules, packages, policies, resource roles, assignments, personas, and administrative dependencies. Retain validated baseline/Joiner resources where they remain useful. Disable or remove only the unused/incomplete resources identified by that inventory, after preserving needed evidence and replacing dependent assignments.
+Removing these files changed nothing in the tenant. Ignored `local/` exports remain.
+
+Before you clean up the tenant:
+
+1. Inventory workflows, schedules, packages, policies, resource roles, assignments, and personas.
+1. Keep validated baseline and Joiner resources and administrative dependencies.
+1. Remove only unused or incomplete resources.
 
 ## Replacement criteria
 
-Define package resource roles, owners, approval and expiry policies, and the three persona outcomes before writing scripts. Validate one operation with an isolated synthetic identity, then automate it with explicit configuration, read-only preview, repeat-run checks, failure reporting, and evidence of delivered/revoked access.
-
-Scheduling stays off until on-demand runs and failure handling pass. Workflow completion, package delivery, SCIM propagation, application authorization, and existing-session behavior must be measured separately.
+- Define package roles, owners, approval, expiry, and persona outcomes before you write scripts.
+- Validate one operation with an isolated synthetic identity, then automate it.
+- Automation needs explicit configuration, a read-only preview, repeat-run checks, and failure reporting.
+- Keep schedules off until on-demand runs pass.
+- Measure workflow completion, package delivery, SCIM propagation, and existing sessions separately.
