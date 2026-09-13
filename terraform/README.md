@@ -1,30 +1,41 @@
-# Terraform roots, separated by lifecycle
+# Terraform
 
-Run Terraform from an explicit root. This directory is a container, not a root.
+Run Terraform from an explicit root. The `terraform/` directory holds roots and modules; it isn't a root itself.
 
 | Root | Owns | Lifetime |
 | --- | --- | --- |
 | [`identity/`](identity/) | IAM Identity Center permission sets and account assignments | Retained. Destroying it removes AWS administrative access. |
 
-Each root keeps its own state, so destroying the lab cannot delete the login path. This implements the first Phase 1 item in the [roadmap](../docs/roadmap.md) and the separation recorded in [ADR-024](../decisions.md#adr-024-separate-terraform-roots-by-resource-lifecycle).
+The identity root has its own state, so no other teardown can delete the AWS sign-in path. See [ADR-024](../decisions.md#adr-024-separate-the-identity-terraform-root).
 
 ## Modules
 
-- `modules/identity_center/` — called by the identity root.
-- `modules/private_access/` — reference code from the previous combined footprint. **No active root calls it.** It is kept for reference only.
+| Module | Used by |
+| --- | --- |
+| `modules/identity_center/` | Identity root |
+| `modules/private_access/` | Nothing. Reference code from the historical private target. |
 
 ## State
 
-State is local, per root, and gitignored. It is machine-local: switching Git branches does not move or restore it. The identity root's state lives at `identity/terraform.tfstate`.
+- State is local, per root, and ignored by Git.
+- State is machine-local. Switching branches doesn't move it.
+- The identity state is at `identity/terraform.tfstate`.
 
-A local backend suits a single-operator prototype only. Moving to a locking remote backend is a separate change, and its bootstrap must sit outside routine lab teardown.
+## Run the identity root
 
-## Identity root
+1. Sign in:
 
-```bash
-aws sso login --profile cross-cloud-admin
-terraform -chdir=terraform/identity init -input=false
-terraform -chdir=terraform/identity plan -var=aws_profile=cross-cloud-admin
-```
+   ```bash
+   aws sso login --profile cross-cloud-admin
+   ```
 
-The profile is local AWS CLI configuration; its `sso_role_name` must match an assigned permission set. For a new installation, copy `identity/terraform.tfvars.example` to the ignored `identity/terraform.tfvars`. An existing installation must keep its current state rather than applying into a fresh one, which would attempt to create duplicate permission sets.
+1. Initialize and plan:
+
+   ```bash
+   terraform -chdir=terraform/identity init -input=false
+   terraform -chdir=terraform/identity plan -var=aws_profile=cross-cloud-admin
+   ```
+
+The profile's `sso_role_name` must match an assigned permission set.
+
+For a new installation, copy `identity/terraform.tfvars.example` to `identity/terraform.tfvars`. For an existing installation, keep the current state. Applying into empty state tries to create duplicate permission sets.
