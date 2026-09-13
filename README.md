@@ -4,11 +4,7 @@ An identity lab that governs workforce access to AWS through Microsoft Entra: fe
 
 > **In progress / pending:** access packages and JML (Joiner/Mover/Leaver) validation are the remaining work. Baseline/elevated package behavior and the Mover and Leaver personas have **not** been validated yet; only the historical Joiner result below has evidence.
 
-## Scope
-
-No additional AWS resources will be added. The planned ECS API, RDS database, Grafana SSO, dashboards, and the retained foundation and disposable lab Terraform roots are out of scope.
-
-What remains:
+## Remaining work
 
 - **Access packages:** verify the catalog, baseline/elevated package resource roles, policies, approvals, and expiry against the governance contract in the [roadmap](docs/roadmap.md#access-packages-and-jml).
 - **JML validation:** evidence all three synthetic personas end to end, then automate only the validated operations.
@@ -19,7 +15,7 @@ The previous deployment helpers and unvalidated Mover/Leaver templates have been
 
 The AWS lab footprint is down. The active [Terraform root](terraform/README.md) holds retained identity resources only: IAM Identity Center permission sets and account assignments. The previous private-target module and anonymous Grafana image remain as reference code and are not deployed.
 
-The [roadmap](docs/roadmap.md) and [ADR-023](decisions.md#adr-023-build-an-aws-operations-lab-with-governed-workforce-access) were written for the broader AWS operations lab. Their AWS workload phases no longer apply; their access package and JML sections remain the reference for the remaining work. Live AWS/Entra inventory must be checked before changing or cleaning up tenant resources.
+Live AWS/Entra inventory must be checked before changing or cleaning up tenant resources.
 
 ## Architecture
 
