@@ -35,5 +35,15 @@ locals {
         "arn:aws:iam::aws:policy/SecurityAudit"
       ]
     }
+
+    elevated_readonly = {
+      name             = "${var.name_prefix}-ElevatedReadOnly"
+      description      = "Time-limited read-only access delivered by the elevated access package."
+      group_name       = "AWS-Elevated-ReadOnly"
+      session_duration = "PT1H"
+      managed_policy_arns = [
+        "arn:aws:iam::aws:policy/ReadOnlyAccess"
+      ]
+    }
   }
 }

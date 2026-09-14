@@ -4,6 +4,8 @@
 
 **Goal:** Give a synthetic Joiner baseline access automatically, before first sign-in, and provision the Joiner into IAM Identity Center.
 
+> **Note:** [Phase 7](phase-7-jml-lifecycle.md) reruns the Joiner with version 2, which requests the package before it enables the account.
+
 ```mermaid
 flowchart LR
     Joiner["Disabled Joiner<br/>with attributes"] --> WF["Joiner workflow"]

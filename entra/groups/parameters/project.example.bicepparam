@@ -30,3 +30,12 @@ param groups = [
     membershipRule: '(user.accountEnabled -eq true) and (user.userType -eq "Member") and (user.companyName -eq "CrossCloud Identity Project") and (user.department -eq "Security") and (user.jobTitle -eq "Security Analyst")'
   }
 ]
+
+param assignedGroups = [
+  {
+    displayName: 'AWS-Elevated-ReadOnly'
+    description: 'Time-limited AWS read-only access delivered by the elevated access package.'
+    uniqueName: 'crossCloudAwsElevatedReadOnly'
+    mailNickname: 'aws-elevated-readonly'
+  }
+]
