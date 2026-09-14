@@ -1,6 +1,6 @@
-# Grafana private target (historical)
+# Grafana private target
 
-This directory holds the Grafana image used for the Phase 4 and 5 Private Access tests. It isn't deployed. See [ADR-020](../decisions.md#adr-020-reuse-grafana-as-an-anonymous-private-target).
+This directory holds the Grafana image for the Phase 4 and 5 Private Access tests. See [ADR-020](../decisions.md#adr-020-reuse-grafana-as-an-anonymous-private-target).
 
 ## Image
 
@@ -13,7 +13,7 @@ Grafana performs no authentication. Private Access makes the access decision, so
 
 ## Build and push
 
-The target subnet had no internet route, so the image had to be in ECR before ECS could place a task. Pass the repository URL explicitly:
+The target subnet has no internet route, so the image must be in ECR before ECS can place a task. Pass the repository URL explicitly:
 
 ```bash
 ECR_REPOSITORY_URL='<existing-ecr-repository-url>' ./build-and-push.sh

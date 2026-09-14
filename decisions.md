@@ -19,11 +19,11 @@ Each record states the decision, why, and the alternatives. Superseded records s
 | [013](#adr-013-remove-the-google-cloud-draft) | Remove the Google Cloud draft | Accepted |
 | [014](#adr-014-evaluate-security-controls-proportionately) | Proportionate security controls | Accepted |
 | [016](#adr-016-focus-on-lifecycle-and-private-access) | Focus on lifecycle and Private Access | Accepted |
-| [017](#adr-017-size-infrastructure-for-one-private-target) | One private target | Historical |
-| [019](#adr-019-run-the-private-target-on-arm-fargate-behind-interface-endpoints) | ARM Fargate target behind endpoints | Historical |
-| [020](#adr-020-reuse-grafana-as-an-anonymous-private-target) | Anonymous Grafana target | Historical |
+| [017](#adr-017-size-infrastructure-for-one-private-target) | One private target | Accepted |
+| [019](#adr-019-run-the-private-target-on-arm-fargate-behind-interface-endpoints) | ARM Fargate target behind endpoints | Accepted |
+| [020](#adr-020-reuse-grafana-as-an-anonymous-private-target) | Anonymous Grafana target | Accepted |
 | [021](#adr-021-use-an-entra-joined-vm-as-the-private-access-test-client) | Entra-joined test client | Accepted |
-| [022](#adr-022-stop-rebuilding-the-private-aws-footprint) | Stop rebuilding the AWS footprint | Accepted |
+| [022](#adr-022-validate-the-lifecycle-without-the-private-target) | Validate the lifecycle without the private target | Accepted |
 | [023](#adr-023-validate-access-packages-and-jml-before-automating) | Validate packages and JML before automating | Accepted; validated |
 | [024](#adr-024-separate-the-identity-terraform-root) | Separate the identity Terraform root | Accepted |
 | [025](#adr-025-close-with-validated-on-demand-lifecycle-workflows) | Close with validated, on-demand lifecycle workflows | Accepted |
@@ -92,7 +92,7 @@ Each record states the decision, why, and the alternatives. Superseded records s
 
 **Decision:** Keep Terraform state on the trusted workstation. Ignore state, plans, and private variable files. Keep secrets out of Terraform.
 
-**Why:** This is a single-user lab. A remote backend adds bootstrap resources before they're needed.
+**Why:** This is a single-user project. A remote backend adds bootstrap resources before they're needed.
 
 | Alternative | Why not |
 | --- | --- |
@@ -186,7 +186,7 @@ These stay mandatory:
 
 ## ADR-016: Focus on lifecycle and Private Access
 
-**Status:** Accepted | **Date:** 2026-09-04 | **Refined by:** [ADR-022](#adr-022-stop-rebuilding-the-private-aws-footprint), [ADR-023](#adr-023-validate-access-packages-and-jml-before-automating)
+**Status:** Accepted | **Date:** 2026-09-04 | **Refined by:** [ADR-022](#adr-022-validate-the-lifecycle-without-the-private-target), [ADR-023](#adr-023-validate-access-packages-and-jml-before-automating)
 
 **Decision:** Demonstrate JML across Entra, IAM Identity Center, and one Private Access destination. Remove the planned protocol apps, token inspectors, and standalone Conditional Access showcase. Keep MFA, existing Conditional Access, and credential hygiene.
 
@@ -194,7 +194,7 @@ These stay mandatory:
 
 ## ADR-017: Size infrastructure for one private target
 
-**Status:** Historical; footprint destroyed 2026-09-05 | **Date:** 2026-09-04
+**Status:** Accepted | **Date:** 2026-09-04
 
 **Decision:** Build one private AWS target and one supported Windows Server connector, with no high availability. Don't require a shared ECS platform, load balancers, a domain, or a NAT gateway.
 
@@ -202,7 +202,7 @@ These stay mandatory:
 
 ## ADR-019: Run the private target on ARM Fargate behind interface endpoints
 
-**Status:** Historical; footprint destroyed 2026-09-05 | **Date:** 2026-09-04
+**Status:** Accepted | **Date:** 2026-09-04
 
 **Decision:**
 
@@ -225,7 +225,7 @@ These stay mandatory:
 
 ## ADR-020: Reuse Grafana as an anonymous private target
 
-**Status:** Historical; footprint destroyed 2026-09-05 | **Date:** 2026-09-04
+**Status:** Accepted | **Date:** 2026-09-04
 
 **Decision:** Use a pinned Grafana OSS container with anonymous viewer access and the login form disabled. Drop Caddy, the SCIM bridge, and OIDC from the source lab. Persist nothing.
 
@@ -257,15 +257,15 @@ These stay mandatory:
 | Entra-registered device | [Preview support](https://learn.microsoft.com/entra/global-secure-access/how-to-install-windows-client) doesn't produce a PRT in this configuration. |
 | Test from the connector host | Reaches the target directly and proves nothing. |
 
-## ADR-022: Stop rebuilding the private AWS footprint
+## ADR-022: Validate the lifecycle without the private target
 
 **Status:** Accepted | **Date:** 2026-09-09
 
-**Decision:** Don't rebuild the AWS footprint. Complete lifecycle validation in Entra and IAM Identity Center only. State the unproven claims instead of leaving open checklist items.
+**Decision:** Complete lifecycle validation in Entra and IAM Identity Center. Don't repeat the Private Access run. State the unproven claims instead of leaving open checklist items.
 
 **Why:**
 
-- A rebuild costs a Windows host, four interface endpoints, and a Fargate task, plus manual connector registration and segment republishing.
+- Another Private Access run needs a Windows host, four interface endpoints, and a Fargate task, plus manual connector registration and segment republishing.
 - Phase 5 already proved the core claim: an Azure VM with no route to AWS got `HTTP/1.1 200 OK` from Grafana on an isolated subnet.
 - Identity Center, permission sets, and SCIM are free, so JML can finish without new resources.
 
@@ -305,7 +305,7 @@ See [Phase 6](worklogs/phase-6-access-packages.md) and [Phase 7](worklogs/phase-
 - Move the identity configuration and its state to `terraform/identity/`.
 - Keep the `module.identity_center` address, so no `moved` blocks, state moves, or imports are needed.
 - Remove the private-target module call, its variables and outputs, and the `enable_private_access` flag.
-- Keep `modules/private_access/` as uncalled reference code.
+- Keep `modules/private_access/` outside the identity root.
 
 **Why:** One shared state let a teardown delete the permission sets that provide AWS administrative access. Separate state makes that impossible. A plan with zero changes proves the move.
 
