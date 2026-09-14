@@ -24,8 +24,9 @@ Each record states the decision, why, and the alternatives. Superseded records s
 | [020](#adr-020-reuse-grafana-as-an-anonymous-private-target) | Anonymous Grafana target | Historical |
 | [021](#adr-021-use-an-entra-joined-vm-as-the-private-access-test-client) | Entra-joined test client | Accepted |
 | [022](#adr-022-stop-rebuilding-the-private-aws-footprint) | Stop rebuilding the AWS footprint | Accepted |
-| [023](#adr-023-validate-access-packages-and-jml-before-automating) | Validate packages and JML before automating | Accepted |
+| [023](#adr-023-validate-access-packages-and-jml-before-automating) | Validate packages and JML before automating | Accepted; validated |
 | [024](#adr-024-separate-the-identity-terraform-root) | Separate the identity Terraform root | Accepted |
+| [025](#adr-025-close-with-validated-on-demand-lifecycle-workflows) | Close with validated, on-demand lifecycle workflows | Accepted |
 
 ## ADR-001: Build the project in verified phases
 
@@ -54,7 +55,7 @@ Each record states the decision, why, and the alternatives. Superseded records s
 
 ## ADR-004: Split provisioning by platform boundary
 
-**Status:** Accepted | **Date:** 2026-09-01 | **Amended by:** [ADR-023](#adr-023-validate-access-packages-and-jml-before-automating)
+**Status:** Accepted | **Date:** 2026-09-01 | **Amended by:** [ADR-023](#adr-023-validate-access-packages-and-jml-before-automating), [ADR-025](#adr-025-close-with-validated-on-demand-lifecycle-workflows)
 
 **Decision:**
 
@@ -275,7 +276,7 @@ These stay mandatory:
 
 ## ADR-023: Validate access packages and JML before automating
 
-**Status:** Accepted; validation pending | **Date:** 2026-09-10 | **Amends:** [ADR-004](#adr-004-split-provisioning-by-platform-boundary)
+**Status:** Accepted; validated in [Phase 7](worklogs/phase-7-jml-lifecycle.md) | **Date:** 2026-09-10 | **Amends:** [ADR-004](#adr-004-split-provisioning-by-platform-boundary) | **Amended by:** [ADR-025](#adr-025-close-with-validated-on-demand-lifecycle-workflows)
 
 **Decision:**
 
@@ -293,7 +294,7 @@ These stay mandatory:
 | Drop packages and JML | Governed lifecycle access is the project goal. |
 | Patch the old framework or import closed PRs #5 and #6 | Validate operations and failure cases before building automation. |
 
-See the [roadmap](docs/roadmap.md) for acceptance criteria.
+See [Phase 6](worklogs/phase-6-access-packages.md) and [Phase 7](worklogs/phase-7-jml-lifecycle.md) for the evidence.
 
 ## ADR-024: Separate the identity Terraform root
 
@@ -318,3 +319,29 @@ See the [roadmap](docs/roadmap.md) for acceptance criteria.
 
 - State is local and per root. Relocate existing state; applying into empty state creates duplicate permission sets.
 - `app/build-and-push.sh` takes `ECR_REPOSITORY_URL` explicitly instead of reading Terraform output.
+
+## ADR-025: Close with validated, on-demand lifecycle workflows
+
+**Status:** Accepted | **Date:** 2026-09-14 | **Amends:** [ADR-004](#adr-004-split-provisioning-by-platform-boundary), [ADR-023](#adr-023-validate-access-packages-and-jml-before-automating)
+
+**Decision:**
+
+- The baseline package grants the Identity Center app role. Dynamic role groups keep granting AWS roles.
+- The elevated package grants an assigned group that maps to a Terraform permission set. `AWS-Administrators` approves it, and it expires after 2 hours.
+- Lifecycle workflows run on demand, with scheduling off.
+- Workflow changes are published as new versions through Microsoft Graph. No workflow automation is committed.
+- Admin direct assignment stays possible. The audit log is the control.
+
+**Why:**
+
+- Each lifecycle operation has end-to-end evidence. See [Phase 7](worklogs/phase-7-jml-lifecycle.md).
+- An approver group keeps approvals working when a person leaves.
+- The workflow scope rule also matches the administrator, so scheduled runs could process an administrative identity.
+- The earlier committed workflow tooling never validated its outcomes ([ADR-023](#adr-023-validate-access-packages-and-jml-before-automating)).
+
+| Alternative | Why not |
+| --- | --- |
+| Named approver | Approval stops when that person leaves |
+| Scheduled workflows | The scope rule includes the administrator |
+| Commit workflow deploy scripts | Graph Bicep doesn't support workflows, and the Terraform `msgraph` provider is in preview |
+| Wait for the 2-hour expiry | Admin removal produces the same removal evidence sooner |
