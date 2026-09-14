@@ -13,7 +13,7 @@ The identity root has its own state, so no other teardown can delete the AWS sig
 | Module | Used by |
 | --- | --- |
 | `modules/identity_center/` | Identity root |
-| `modules/private_access/` | Nothing. Reference code from the historical private target. |
+| `modules/private_access/` | Phase 4 private target: VPC, connector, and Grafana on Fargate |
 
 ## State
 

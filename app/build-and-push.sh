@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Builds the private target image and pushes it to the project ECR repository.
-# Historical helper. The combined Terraform root that published the repository
-# URL is gone, so pass an existing repository in ECR_REPOSITORY_URL. The lab root
-# that will own this again is not implemented yet.
+# Pass the repository URL in ECR_REPOSITORY_URL.
 set -euo pipefail
 cd "$(dirname "$0")"
 

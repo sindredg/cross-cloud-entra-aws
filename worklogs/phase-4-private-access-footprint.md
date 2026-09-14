@@ -4,8 +4,6 @@
 
 **Goal:** Deploy a private target and a connector host. Prove that only the connector can reach the target.
 
-> **Historical:** This footprint was destroyed after Phase 5.
-
 ## Design
 
 ```mermaid
